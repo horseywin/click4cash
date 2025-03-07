@@ -5,122 +5,141 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Click4Cash</title>
     <style>
-        * {
+        /* Dark Minimalist Theme */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #fff;
+            text-align: center;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-            font-family: Arial, sans-serif;
         }
-
-        body {
-            background-color: #f4f4f4;
-            text-align: center;
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
             padding: 20px;
+            border-radius: 10px;
+            background: #1e1e1e;
+            box-shadow: 0px 0px 15px rgba(255, 255, 255, 0.1);
         }
-
-        .top-bar {
+        h1 {
+            font-size: 28px;
+        }
+        .click-btn {
+            background: #ff9800;
+            color: white;
+            font-size: 24px;
+            padding: 20px 40px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 20px;
+        }
+        .click-btn:hover {
+            background: #e68900;
+        }
+        .cards {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        .card {
+            background: #252525;
+            padding: 20px;
+            border-radius: 10px;
+            width: 250px;
+            text-align: left;
+            margin: 10px;
+        }
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #444;
+            padding: 5px 0;
+        }
+        .popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #333;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+        .popup button {
+            background: #ff9800;
+            color: white;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+        }
+        .navbar {
             display: flex;
             justify-content: flex-end;
             padding: 10px;
+            background: #1e1e1e;
         }
-
-        button {
-            padding: 10px 20px;
-            border: none;
+        .navbar button {
+            background: none;
+            color: white;
+            border: 1px solid white;
+            padding: 5px 10px;
             cursor: pointer;
-            font-size: 16px;
-            border-radius: 5px;
-        }
-
-        .auth-btn {
-            background-color: #007BFF;
-            color: white;
-            margin-left: 10px;
-        }
-
-        .container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-            margin-top: 50px;
-        }
-
-        #click-btn {
-            font-size: 24px;
-            background-color: #28a745;
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            transition: 0.2s;
-        }
-
-        #click-btn:hover {
-            background-color: #218838;
-        }
-
-        .cards {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 20px;
-            margin-top: 20px;
-        }
-
-        .card {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            width: 250px;
-        }
-
-        .leaderboard {
-            text-align: left;
-        }
-
-        @media (max-width: 600px) {
-            .cards {
-                flex-direction: column;
-                align-items: center;
-            }
         }
     </style>
 </head>
 <body>
-    <div class="top-bar">
-        <button id="login-btn" class="auth-btn">Login</button>
-        <button id="logout-btn" class="auth-btn" style="display: none;">Logout</button>
+
+    <!-- Navbar -->
+    <div class="navbar">
+        <button id="loginBtn">Login</button>
+        <button id="logoutBtn" style="display:none;">Logout</button>
     </div>
 
     <div class="container">
-        <button id="click-btn">Click Me!</button>
-        <p>Clicks: <span id="click-count">0</span></p>
-        <p>Winning Chance: <span id="chance">0%</span></p>
+        <h1>Click to Win Cash</h1>
+        <button class="click-btn" id="clickBtn">Click Me</button>
+        <p>Clicks: <span id="clickCount">0</span></p>
+
+        <div class="cards">
+            <!-- Leaderboard -->
+            <div class="card">
+                <h2>Leaderboard</h2>
+                <div id="leaderboard"></div>
+            </div>
+
+            <!-- Profile -->
+            <div class="card">
+                <h2>Profile</h2>
+                <p>Email: <span id="userEmail">N/A</span></p>
+                <p>Playtime: <span id="playTime">0 mins</span></p>
+                <p>Joined: <span id="joinDate">N/A</span></p>
+            </div>
+
+            <!-- About -->
+            <div class="card">
+                <h2>About Click4Cash</h2>
+                <p>We generate money through ad revenue. 50% of the earnings go back to players as a reward!</p>
+            </div>
+        </div>
     </div>
 
-    <div class="cards">
-        <div class="card">
-            <h3>Leaderboard</h3>
-            <ul id="leaderboard" class="leaderboard"></ul>
-        </div>
-        <div class="card">
-            <h3>Profile</h3>
-            <p>Email: <span id="user-email">-</span></p>
-            <p>Playtime: <span id="playtime">0</span> min</p>
-            <p>Join Date: <span id="join-date">-</span></p>
-        </div>
-        <div class="card">
-            <h3>About</h3>
-            <p>Click as many times as possible! More clicks = higher chances to win.</p>
-        </div>
+    <!-- Popup for Login -->
+    <div class="popup" id="loginPopup">
+        <p>Please sign in to save your progress!</p>
+        <button id="popupLoginBtn">Login</button>
     </div>
 
+    <!-- Firebase Scripts -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"></script>
 
     <script>
+        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyCQeZ1EOPbHOy8_wOBBvlchZwj8tTCZM2w",
             authDomain: "click4cash-7e106.firebaseapp.com",
@@ -129,86 +148,71 @@
             messagingSenderId: "689145020485",
             appId: "1:689145020485:web:458d083ec5bca7d8b3e32c"
         };
-
+        
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        let user = null;
-        let clicks = 0;
-        let playtime = 0;
-        let interval;
+        let clickCount = 0;
+        const clickBtn = document.getElementById("clickBtn");
+        const clickDisplay = document.getElementById("clickCount");
 
-        function updateUI() {
-            document.getElementById("click-count").innerText = clicks;
-            let chance = (clicks / 1000) * 100; // Example logic for % chance
-            document.getElementById("chance").innerText = chance.toFixed(2) + "%";
-        }
+        // Click Event
+        clickBtn.addEventListener("click", () => {
+            clickCount++;
+            clickDisplay.textContent = clickCount;
 
-        document.getElementById("click-btn").addEventListener("click", () => {
-            if (!user) {
-                alert("Sign in first!");
-                return;
+            if (auth.currentUser) {
+                db.collection("users").doc(auth.currentUser.uid).update({
+                    clicks: clickCount
+                });
             }
-            clicks++;
-            updateUI();
-            db.collection("users").doc(user.uid).set({ clicks }, { merge: true });
         });
 
-        auth.onAuthStateChanged((u) => {
-            user = u;
+        // Auth State Change
+        auth.onAuthStateChanged(user => {
             if (user) {
-                document.getElementById("login-btn").style.display = "none";
-                document.getElementById("logout-btn").style.display = "block";
-
-                db.collection("users").doc(user.uid).get().then((doc) => {
+                document.getElementById("loginBtn").style.display = "none";
+                document.getElementById("logoutBtn").style.display = "inline";
+                document.getElementById("userEmail").textContent = user.email;
+                
+                db.collection("users").doc(user.uid).get().then(doc => {
                     if (doc.exists) {
-                        clicks = doc.data().clicks || 0;
-                        updateUI();
+                        clickCount = doc.data().clicks || 0;
+                        clickDisplay.textContent = clickCount;
+                        document.getElementById("joinDate").textContent = doc.data().joined || "N/A";
+                    } else {
+                        db.collection("users").doc(user.uid).set({
+                            clicks: 0,
+                            joined: new Date().toLocaleDateString()
+                        });
                     }
                 });
-
-                document.getElementById("user-email").innerText = user.email;
-                document.getElementById("join-date").innerText = new Date(user.metadata.creationTime).toLocaleDateString();
-
-                interval = setInterval(() => {
-                    playtime++;
-                    document.getElementById("playtime").innerText = playtime;
-                }, 60000);
             } else {
-                document.getElementById("login-btn").style.display = "block";
-                document.getElementById("logout-btn").style.display = "none";
-                document.getElementById("user-email").innerText = "-";
-                document.getElementById("join-date").innerText = "-";
-                clicks = 0;
-                updateUI();
-                clearInterval(interval);
+                document.getElementById("loginBtn").style.display = "inline";
+                document.getElementById("logoutBtn").style.display = "none";
+                document.getElementById("userEmail").textContent = "N/A";
             }
         });
 
-        document.getElementById("login-btn").addEventListener("click", () => {
+        // Login / Logout
+        document.getElementById("loginBtn").addEventListener("click", () => {
             const provider = new firebase.auth.GoogleAuthProvider();
-            auth.signInWithPopup(provider).catch((error) => console.error(error));
+            auth.signInWithPopup(provider);
         });
 
-        document.getElementById("logout-btn").addEventListener("click", () => {
+        document.getElementById("logoutBtn").addEventListener("click", () => {
             auth.signOut();
         });
 
-        function updateLeaderboard() {
-            db.collection("users").orderBy("clicks", "desc").limit(10).onSnapshot(snapshot => {
-                let leaderboard = document.getElementById("leaderboard");
-                leaderboard.innerHTML = "";
-                snapshot.forEach((doc) => {
-                    let userData = doc.data();
-                    let li = document.createElement("li");
-                    li.textContent = `${userData.email || "Anonymous"} - ${userData.clicks} clicks`;
-                    leaderboard.appendChild(li);
-                });
-            });
-        }
+        // Show Login Popup
+        setTimeout(() => {
+            document.getElementById("loginPopup").style.display = "block";
+        }, 3000);
 
-        updateLeaderboard();
+        document.getElementById("popupLoginBtn").addEventListener("click", () => {
+            auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+        });
     </script>
 </body>
 </html>
