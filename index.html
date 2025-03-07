@@ -309,6 +309,9 @@
 
         let currentUser = null;
         let totalClicks = 0;
+        let localClicks = 0; // Local counter for immediate UI updates
+        let clickBuffer = 0; // Buffer for clicks to sync with Firebase
+        let syncTimeout = null; // Timeout for batch syncing
 
         // Show rules popup on first visit
         if (!localStorage.getItem('visited')) {
@@ -413,6 +416,18 @@
             document.getElementById('overlay').style.display = 'none';
         }
 
+        // Show welcome popup
+        function showWelcomePopup() {
+            document.getElementById('welcome-popup').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        // Hide welcome popup
+        function closeWelcomePopup() {
+            document.getElementById('welcome-popup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
         // Login function
         function login(event) {
             event.preventDefault();
@@ -422,8 +437,11 @@
             auth.signInWithEmailAndPassword(email, password)
                 .then((userCredential) => {
                     currentUser = userCredential.user;
+                    loadUserData();
                     updateLeaderboard();
                     document.getElementById('click-message').style.display = 'none';
+                    document.getElementById('login-btn').style.display = 'none';
+                    document.getElementById('signup-btn').style.display = 'none';
                     document.getElementById('logout-btn').style.display = 'inline-block';
                     document.getElementById('click-btn').disabled = false;
                     hideLogin();
@@ -455,6 +473,10 @@
                         updateLeaderboard();
                         hideSignUp();
                         showWelcomePopup();
+                        document.getElementById('login-btn').style.display = 'none';
+                        document.getElementById('signup-btn').style.display = 'none';
+                        document.getElementById('logout-btn').style.display = 'inline-block';
+                        document.getElementById('user-email').innerText = currentUser.email;
                     }).catch((error) => {
                         console.error("Error creating user document: ", error);
                     });
@@ -464,29 +486,97 @@
                 });
         }
 
-        // Increment clicks
+        // Logout function
+        function logout() {
+            auth.signOut().then(() => {
+                currentUser = null;
+                localClicks = 0;
+                clickBuffer = 0;
+                document.getElementById('click-count').innerText = '0';
+                document.getElementById('user-email').innerText = 'Not Logged In';
+                document.getElementById('chance-of-winning').innerText = 'Chance of Winning: 0%';
+                document.getElementById('login-btn').style.display = 'inline-block';
+                document.getElementById('signup-btn').style.display = 'inline-block';
+                document.getElementById('logout-btn').style.display = 'none';
+                document.getElementById('click-message').style.display = 'block';
+                document.getElementById('click-btn').disabled = true;
+            }).catch((error) => {
+                console.error("Logout failed: ", error);
+            });
+        }
+
+        // Load user data on login
+        function loadUserData() {
+            if (currentUser) {
+                const userRef = db.collection("users").doc(currentUser.uid);
+                userRef.get().then((doc) => {
+                    if (doc.exists) {
+                        localClicks = doc.data().clicks || 0;
+                        document.getElementById('click-count').innerText = localClicks;
+                        document.getElementById('join-date').innerText = `Joined: ${new Date(doc.data().joinDate).toLocaleDateString()}`;
+                    }
+                }).catch((error) => {
+                    console.error("Error loading user data: ", error);
+                });
+            }
+        }
+
+        // Sync clicks with Firebase
+        function syncClicks() {
+            if (clickBuffer > 0 && currentUser) {
+                const userRef = db.collection("users").doc(currentUser.uid);
+                userRef.update({
+                    clicks: firebase.firestore.FieldValue.increment(clickBuffer)
+                }).then(() => {
+                    clickBuffer = 0; // Reset buffer after successful sync
+                    updateLeaderboard();
+                }).catch(err => {
+                    console.error("Error syncing clicks: ", err);
+                });
+            }
+        }
+
+        // Increment clicks with local caching and debounced sync
         function incrementClicks() {
             if (!currentUser) {
                 document.getElementById('click-message').style.display = 'block';
                 return;
             }
 
-            const userRef = db.collection("users").doc(currentUser.uid);
-            userRef.update({
-                clicks: firebase.firestore.FieldValue.increment(1)
-            }).then(() => {
-                userRef.get().then((doc) => {
-                    if (doc.exists) {
-                        document.getElementById('click-count').innerText = doc.data().clicks;
-                    }
-                });
-                updateLeaderboard();
-            }).catch(err => {
-                console.error("Error updating clicks: ", err);
-            });
+            document.getElementById('click-message').style.display = 'none';
+            localClicks += 1;
+            clickBuffer += 1;
+            document.getElementById('click-count').innerText = localClicks;
+
+            // Debounce the sync to Firebase (every 500ms)
+            if (syncTimeout) clearTimeout(syncTimeout);
+            syncTimeout = setTimeout(syncClicks, 500);
         }
 
         // Initialize game and leaderboard
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                currentUser = user;
+                loadUserData();
+                updateLeaderboard();
+                document.getElementById('login-btn').style.display = 'none';
+                document.getElementById('signup-btn').style.display = 'none';
+                document.getElementById('logout-btn').style.display = 'inline-block';
+                document.getElementById('click-btn').disabled = false;
+                document.getElementById('user-email').innerText = currentUser.email;
+            } else {
+                currentUser = null;
+                localClicks = 0;
+                clickBuffer = 0;
+                document.getElementById('click-count').innerText = '0';
+                document.getElementById('user-email').innerText = 'Not Logged In';
+                document.getElementById('login-btn').style.display = 'inline-block';
+                document.getElementById('signup-btn').style.display = 'inline-block';
+                document.getElementById('logout-btn').style.display = 'none';
+                document.getElementById('click-btn').disabled = true;
+            }
+        });
+
         updateLeaderboard();
     </script>
 </body>
