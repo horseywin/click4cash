@@ -7,6 +7,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <link rel="icon" href="favicon.ico" type="image/x-icon"> <!-- Favicon added -->
     <style>
         /* Basic reset and space theme */
         * {
@@ -254,4 +255,14 @@
             appId: "1:689145020485:web:458d083ec5bca7d8b3e32c"
         };
         firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth
+        const auth = firebase.auth;
+
+        let clickCount = 0;
+
+        function incrementClicks() {
+            clickCount += 1;
+            document.getElementById("click-count").innerText = clickCount;
+        }
+    </script>
+</body>
+</html>
