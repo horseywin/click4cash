@@ -5,103 +5,133 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Click4Cash</title>
     <style>
-        /* Background & General Styling */
         body {
-            font-family: Arial, sans-serif;
-            text-align: center;
             margin: 0;
             padding: 0;
-            background: radial-gradient(circle, #1e3c72, #2a5298);
-            color: white;
+            background-color: #1a1a1a;
+            font-family: Arial, sans-serif;
             overflow: hidden;
         }
-
-        /* Centering Content */
-        .container {
-            position: relative;
-            z-index: 2;
-            margin-top: 15vh;
-        }
-
         h1 {
-            font-size: 2.5rem;
-            text-shadow: 2px 2px 10px rgba(255, 255, 255, 0.5);
-        }
-
-        p {
-            font-size: 1.5rem;
-            margin: 20px 0;
-        }
-
-        /* Button Styling */
-        #clickButton {
-            font-size: 2rem;
-            padding: 15px 30px;
-            background: linear-gradient(45deg, #ff416c, #ff4b2b);
-            border: none;
+            text-align: center;
             color: white;
-            border-radius: 50px;
+            font-size: 3em;
+            margin-top: 50px;
+        }
+        #clickButton {
+            display: block;
+            margin: 0 auto;
+            padding: 20px 40px;
+            font-size: 1.5em;
+            color: white;
+            background-color: #ffcc00;
+            border: none;
             cursor: pointer;
-            transition: transform 0.1s ease, box-shadow 0.2s ease;
-            box-shadow: 0px 5px 15px rgba(255, 75, 43, 0.5);
+            border-radius: 10px;
+            transition: background-color 0.3s;
         }
-
-        #clickButton:active {
-            transform: scale(0.9);
-            box-shadow: 0px 2px 5px rgba(255, 75, 43, 0.5);
+        #clickButton:hover {
+            background-color: #ffb300;
         }
-
-        /* Particle Background */
-        #particles-js {
+        #clickButton:focus {
+            outline: none;
+        }
+        .particle {
             position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-            z-index: 1;
+            border-radius: 50%;
+            background-color: rgba(255, 204, 0, 0.8);
+            pointer-events: none;
+            animation: particleAnimation 1s forwards;
+        }
+        @keyframes particleAnimation {
+            0% {
+                transform: scale(0) translate(0, 0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1) translate(var(--x), var(--y));
+                opacity: 0;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Particle Background -->
-    <div id="particles-js"></div>
 
-    <!-- Main Content -->
-    <div class="container">
-        <h1>Click as Fast as You Can!</h1>
-        <p>Clicks: <span id="clickCount">0</span></p>
-        <button id="clickButton">Click Me!</button>
-    </div>
+<h1>Click4Cash - Click to Win!</h1>
+<button id="clickButton">Click Me</button>
 
-    <script>
-        let count = 0;
-        const clickButton = document.getElementById("clickButton");
-        const clickCount = document.getElementById("clickCount");
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
 
-        clickButton.addEventListener("click", () => {
-            count++;
-            clickCount.textContent = count;
-        });
-    </script>
+<script>
+    // Firebase Configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyCQeZ1EOPbHOy8_wOBBvlchZwj8tTCZM2w",
+        authDomain: "click4cash-7e106.firebaseapp.com",
+        projectId: "click4cash-7e106",
+        storageBucket: "click4cash-7e106.firebasestorage.app",
+        messagingSenderId: "689145020485",
+        appId: "1:689145020485:web:458d083ec5bca7d8b3e32c",
+        measurementId: "G-NNKKXT9SS4"
+    };
 
-    <!-- Particles.js Library -->
-    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
-    <script>
-        particlesJS("particles-js", {
-            particles: {
-                number: { value: 80, density: { enable: true, value_area: 800 } },
-                color: { value: "#ffffff" },
-                shape: { type: "circle" },
-                opacity: { value: 0.5, random: false },
-                size: { value: 3, random: true },
-                move: { enable: true, speed: 2 }
-            },
-            interactivity: {
-                detect_on: "canvas",
-                events: { onhover: { enable: true, mode: "repulse" } },
-                modes: { repulse: { distance: 100, duration: 0.4 } }
-            }
-        });
-    </script>
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // Track clicks and display particles
+    let clickCount = 0;
+    const clickButton = document.getElementById('clickButton');
+
+    clickButton.addEventListener('click', (event) => {
+        clickCount++;
+
+        // Log the click count
+        console.log("Clicks: ", clickCount);
+
+        // Generate particles
+        generateParticles(event.clientX, event.clientY);
+    });
+
+    // Function to generate particles on click
+    function generateParticles(x, y) {
+        for (let i = 0; i < 10; i++) {
+            const particle = document.createElement('div');
+            particle.classList.add('particle');
+            document.body.appendChild(particle);
+
+            // Randomize particle size and animation
+            const size = Math.random() * 10 + 5;
+            particle.style.width = `${size}px`;
+            particle.style.height = `${size}px`;
+
+            // Position the particles
+            particle.style.left = `${x - size / 2}px`;
+            particle.style.top = `${y - size / 2}px`;
+
+            // Animate the particles
+            const angle = Math.random() * Math.PI * 2;
+            const distance = Math.random() * 100 + 50;
+            const xOffset = Math.cos(angle) * distance;
+            const yOffset = Math.sin(angle) * distance;
+
+            // Set the custom animation movement
+            particle.style.setProperty('--x', `${xOffset}px`);
+            particle.style.setProperty('--y', `${yOffset}px`);
+
+            // Remove the particle after animation
+            setTimeout(() => {
+                particle.remove();
+            }, 1000);
+        }
+    }
+
+    // You can add authentication and Firestore functionality here
+    console.log("Firebase connected:", app.name); // Logs Firebase connection status
+</script>
+
 </body>
 </html>
