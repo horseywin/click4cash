@@ -4,134 +4,122 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Click4Cash</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #1a1a1a;
-            font-family: Arial, sans-serif;
-            overflow: hidden;
-        }
-        h1 {
-            text-align: center;
-            color: white;
-            font-size: 3em;
-            margin-top: 50px;
-        }
-        #clickButton {
-            display: block;
-            margin: 0 auto;
-            padding: 20px 40px;
-            font-size: 1.5em;
-            color: white;
-            background-color: #ffcc00;
-            border: none;
-            cursor: pointer;
-            border-radius: 10px;
-            transition: background-color 0.3s;
-        }
-        #clickButton:hover {
-            background-color: #ffb300;
-        }
-        #clickButton:focus {
-            outline: none;
-        }
-        .particle {
-            position: absolute;
-            border-radius: 50%;
-            background-color: rgba(255, 204, 0, 0.8);
-            pointer-events: none;
-            animation: particleAnimation 1s forwards;
-        }
-        @keyframes particleAnimation {
-            0% {
-                transform: scale(0) translate(0, 0);
-                opacity: 1;
-            }
-            100% {
-                transform: scale(1) translate(var(--x), var(--y));
-                opacity: 0;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js"></script>
 </head>
 <body>
+    <h1>Click4Cash</h1>
+    <p>Click the button as many times as possible! The top scorer wins!</p>
 
-<h1>Click4Cash - Click to Win!</h1>
-<button id="clickButton">Click Me</button>
+    <button id="clickButton">Click Me!</button>
+    <p id="clickCount">Clicks: 0</p>
 
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+    <!-- User Authentication -->
+    <div id="auth-container">
+        <button id="loginButton">Login</button>
+        <button id="logoutButton" style="display: none;">Logout</button>
+    </div>
 
-<script>
-    // Firebase Configuration
-    const firebaseConfig = {
-        apiKey: "AIzaSyCQeZ1EOPbHOy8_wOBBvlchZwj8tTCZM2w",
-        authDomain: "click4cash-7e106.firebaseapp.com",
-        projectId: "click4cash-7e106",
-        storageBucket: "click4cash-7e106.firebasestorage.app",
-        messagingSenderId: "689145020485",
-        appId: "1:689145020485:web:458d083ec5bca7d8b3e32c",
-        measurementId: "G-NNKKXT9SS4"
-    };
+    <div>
+        <h2>Leaderboard</h2>
+        <ul id="leaderboard"></ul>
+    </div>
 
-    // Initialize Firebase
-    const app = firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+    <script>
+        // Firebase configuration (your credentials)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCQeZ1EOPbHOy8_wOBBvlchZwj8tTCZM2w",
+            authDomain: "click4cash-7e106.firebaseapp.com",
+            projectId: "click4cash-7e106",
+            storageBucket: "click4cash-7e106.firebasestorage.app",
+            messagingSenderId: "689145020485",
+            appId: "1:689145020485:web:458d083ec5bca7d8b3e32c"
+        };
 
-    // Track clicks and display particles
-    let clickCount = 0;
-    const clickButton = document.getElementById('clickButton');
+        // Initialize Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const firestore = firebase.firestore();
 
-    clickButton.addEventListener('click', (event) => {
-        clickCount++;
+        let userId = null;
+        let clickCount = 0;
 
-        // Log the click count
-        console.log("Clicks: ", clickCount);
+        // Auth state change listener
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                userId = user.uid;
+                document.getElementById('loginButton').style.display = 'none';
+                document.getElementById('logoutButton').style.display = 'block';
+                loadLeaderboard();
+            } else {
+                userId = null;
+                document.getElementById('loginButton').style.display = 'block';
+                document.getElementById('logoutButton').style.display = 'none';
+            }
+        });
 
-        // Generate particles
-        generateParticles(event.clientX, event.clientY);
-    });
+        // Login function
+        document.getElementById('loginButton').addEventListener('click', () => {
+            auth.signInAnonymously()
+                .then(() => {
+                    console.log('User logged in');
+                })
+                .catch((error) => {
+                    console.error(error.message);
+                });
+        });
 
-    // Function to generate particles on click
-    function generateParticles(x, y) {
-        for (let i = 0; i < 10; i++) {
-            const particle = document.createElement('div');
-            particle.classList.add('particle');
-            document.body.appendChild(particle);
+        // Logout function
+        document.getElementById('logoutButton').addEventListener('click', () => {
+            auth.signOut()
+                .then(() => {
+                    console.log('User logged out');
+                })
+                .catch((error) => {
+                    console.error(error.message);
+                });
+        });
 
-            // Randomize particle size and animation
-            const size = Math.random() * 10 + 5;
-            particle.style.width = `${size}px`;
-            particle.style.height = `${size}px`;
+        // Button click tracking
+        document.getElementById('clickButton').addEventListener('click', () => {
+            if (userId) {
+                clickCount++;
+                document.getElementById('clickCount').textContent = `Clicks: ${clickCount}`;
+                updateClickCountInFirestore();
+            }
+        });
 
-            // Position the particles
-            particle.style.left = `${x - size / 2}px`;
-            particle.style.top = `${y - size / 2}px`;
-
-            // Animate the particles
-            const angle = Math.random() * Math.PI * 2;
-            const distance = Math.random() * 100 + 50;
-            const xOffset = Math.cos(angle) * distance;
-            const yOffset = Math.sin(angle) * distance;
-
-            // Set the custom animation movement
-            particle.style.setProperty('--x', `${xOffset}px`);
-            particle.style.setProperty('--y', `${yOffset}px`);
-
-            // Remove the particle after animation
-            setTimeout(() => {
-                particle.remove();
-            }, 1000);
+        // Update click count in Firestore
+        function updateClickCountInFirestore() {
+            firestore.collection('users').doc(userId).set({
+                clickCount: clickCount
+            })
+            .then(() => {
+                console.log('Click count updated');
+            })
+            .catch((error) => {
+                console.error('Error updating click count: ', error);
+            });
         }
-    }
 
-    // You can add authentication and Firestore functionality here
-    console.log("Firebase connected:", app.name); // Logs Firebase connection status
-</script>
-
+        // Load leaderboard from Firestore
+        function loadLeaderboard() {
+            firestore.collection('users').orderBy('clickCount', 'desc').limit(5).get()
+                .then((snapshot) => {
+                    const leaderboard = document.getElementById('leaderboard');
+                    leaderboard.innerHTML = '';
+                    snapshot.forEach(doc => {
+                        const li = document.createElement('li');
+                        li.textContent = `${doc.id}: ${doc.data().clickCount} clicks`;
+                        leaderboard.appendChild(li);
+                    });
+                })
+                .catch((error) => {
+                    console.error('Error loading leaderboard: ', error);
+                });
+        }
+    </script>
 </body>
 </html>
