@@ -3,143 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Click4Cash</title>
+    <title>Click4Cash - Space Edition</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <style>
-        /* Dark Minimalist Theme */
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #121212;
-            color: #fff;
-            text-align: center;
+        /* Basic reset */
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
         }
-        .container {
-            max-width: 800px;
-            margin: 20px auto;
-            padding: 20px;
-            border-radius: 10px;
-            background: #1e1e1e;
-            box-shadow: 0px 0px 15px rgba(255, 255, 255, 0.1);
+        body {
+            background: #000;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+            gap: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+        #top-bar {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
+        }
+        button {
+            background: #222;
+            color: #fff;
+            border: none;
+            padding: 15px 25px;
+            cursor: pointer;
+            transition: 0.4s ease;
+            font-size: 18px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+        button:hover {
+            background: #444;
+            transform: translateY(-3px);
         }
         h1 {
-            font-size: 28px;
+            font-size: 48px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
         }
-        .click-btn {
-            background: #ff9800;
-            color: white;
-            font-size: 24px;
-            padding: 20px 40px;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: 0.3s;
-            margin-top: 20px;
+        #click-btn {
+            background: linear-gradient(45deg, #0084ff, #ff1a75);
+            font-size: 30px;
+            padding: 50px 100px;
+            border-radius: 50px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+            transform: scale(1);
+            transition: transform 0.3s, background 0.4s ease;
         }
-        .click-btn:hover {
-            background: #e68900;
+        #click-btn:hover {
+            transform: scale(1.1);
+            background: linear-gradient(45deg, #00d4ff, #ff69b3);
         }
-        .cards {
+        #click-btn:active {
+            transform: scale(1);
+            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.3);
+        }
+        .container {
             display: flex;
-            justify-content: space-around;
+            gap: 20px;
             flex-wrap: wrap;
-            margin-top: 20px;
+            justify-content: center;
+            margin-top: 60px;
         }
         .card {
-            background: #252525;
+            background: rgba(50, 50, 50, 0.8);
             padding: 20px;
-            border-radius: 10px;
-            width: 250px;
-            text-align: left;
-            margin: 10px;
+            border-radius: 12px;
+            width: 300px;
+            text-align: center;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+            transform: translateY(-30px);
+            opacity: 0;
+            animation: slideUp 0.5s ease-in-out forwards;
         }
-        .leaderboard-item {
-            display: flex;
-            justify-content: space-between;
-            border-bottom: 1px solid #444;
-            padding: 5px 0;
+        .card h3 {
+            font-size: 22px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
         }
-        .popup {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #333;
-            padding: 20px;
-            border-radius: 10px;
-            display: none;
+        .card p {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #ccc;
         }
-        .popup button {
-            background: #ff9800;
-            color: white;
-            padding: 10px;
-            border: none;
-            cursor: pointer;
+        /* Animations */
+        @keyframes slideUp {
+            0% { transform: translateY(30px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
         }
-        .navbar {
-            display: flex;
-            justify-content: flex-end;
-            padding: 10px;
-            background: #1e1e1e;
+        @keyframes fadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
         }
-        .navbar button {
-            background: none;
-            color: white;
-            border: 1px solid white;
-            padding: 5px 10px;
-            cursor: pointer;
+
+        /* Styles for the space background */
+        #space {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .star {
+            position: absolute;
+            background-color: white;
+            border-radius: 50%;
+            opacity: 0.7;
+            animation: moveStars linear infinite;
         }
     </style>
 </head>
 <body>
+    <div id="space"></div> <!-- Space Background -->
 
-    <!-- Navbar -->
-    <div class="navbar">
-        <button id="loginBtn">Login</button>
-        <button id="logoutBtn" style="display:none;">Logout</button>
+    <div id="top-bar">
+        <button onclick="showLogin()">Login</button>
+        <button onclick="logout()" id="logout-btn" style="display: none;">Logout</button>
     </div>
 
+    <h1>Click4Cash - Space Edition</h1>
+    <button id="click-btn" onclick="incrementClicks()">Click Me!</button>
+
     <div class="container">
-        <h1>Click to Win Cash</h1>
-        <button class="click-btn" id="clickBtn">Click Me</button>
-        <p>Clicks: <span id="clickCount">0</span></p>
-
-        <div class="cards">
-            <!-- Leaderboard -->
-            <div class="card">
-                <h2>Leaderboard</h2>
-                <div id="leaderboard"></div>
-            </div>
-
-            <!-- Profile -->
-            <div class="card">
-                <h2>Profile</h2>
-                <p>Email: <span id="userEmail">N/A</span></p>
-                <p>Playtime: <span id="playTime">0 mins</span></p>
-                <p>Joined: <span id="joinDate">N/A</span></p>
-            </div>
-
-            <!-- About -->
-            <div class="card">
-                <h2>About Click4Cash</h2>
-                <p>We generate money through ad revenue. 50% of the earnings go back to players as a reward!</p>
-            </div>
+        <div class="card">
+            <h3>Your Clicks</h3>
+            <p id="click-count">0</p>
+        </div>
+        <div class="card">
+            <h3>Leaderboard</h3>
+            <div id="leaderboard"></div>
+        </div>
+        <div class="card">
+            <h3>Your Profile</h3>
+            <p id="user-email">Not Logged In</p>
+            <p id="join-date"></p>
+            <p id="playtime"></p>
         </div>
     </div>
 
-    <!-- Popup for Login -->
-    <div class="popup" id="loginPopup">
-        <p>Please sign in to save your progress!</p>
-        <button id="popupLoginBtn">Login</button>
+    <!-- Login Popup -->
+    <div id="overlay"></div>
+    <div id="login-popup">
+        <h2>Sign In</h2>
+        <button onclick="login()">Login with Google</button>
+        <button onclick="hideLogin()">Cancel</button>
     </div>
 
-    <!-- Firebase Scripts -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-
     <script>
-        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyCQeZ1EOPbHOy8_wOBBvlchZwj8tTCZM2w",
             authDomain: "click4cash-7e106.firebaseapp.com",
@@ -148,70 +172,127 @@
             messagingSenderId: "689145020485",
             appId: "1:689145020485:web:458d083ec5bca7d8b3e32c"
         };
-        
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        let clickCount = 0;
-        const clickBtn = document.getElementById("clickBtn");
-        const clickDisplay = document.getElementById("clickCount");
+        let clicks = 0;
+        let user = null;
 
-        // Click Event
-        clickBtn.addEventListener("click", () => {
-            clickCount++;
-            clickDisplay.textContent = clickCount;
+        // Space background with stars that move faster upon click
+        const space = document.getElementById('space');
+        const starCount = 150; // Number of stars
 
-            if (auth.currentUser) {
-                db.collection("users").doc(auth.currentUser.uid).update({
-                    clicks: clickCount
-                });
-            }
-        });
+        // Generate random stars
+        const stars = [];
+        for (let i = 0; i < starCount; i++) {
+            let star = document.createElement('div');
+            star.classList.add('star');
+            star.style.width = `${Math.random() * 3 + 1}px`; // Random size
+            star.style.height = star.style.width;
+            star.style.top = `${Math.random() * 100}vh`;
+            star.style.left = `${Math.random() * 100}vw`;
+            space.appendChild(star);
+            stars.push(star);
+        }
 
-        // Auth State Change
-        auth.onAuthStateChanged(user => {
+        let speed = 1; // Default speed for the background movement
+
+        function incrementClicks() {
             if (user) {
-                document.getElementById("loginBtn").style.display = "none";
-                document.getElementById("logoutBtn").style.display = "inline";
-                document.getElementById("userEmail").textContent = user.email;
-                
+                clicks++;
+                document.getElementById("click-count").innerText = clicks;
+                db.collection("users").doc(user.uid).set({ clicks }, { merge: true });
+                // Increase speed upon click
+                speed += 0.05; 
+                updateStarsSpeed();
+            } else {
+                alert("Please log in first!");
+            }
+        }
+
+        // Update star movement speed
+        function updateStarsSpeed() {
+            stars.forEach(star => {
+                star.style.animationDuration = `${(speed * 10)}s`; // Adjust speed for each star
+            });
+        }
+
+        // Create star movement animation
+        document.styleSheets[0].insertRule(`
+            @keyframes moveStars {
+                0% { transform: translateY(0); }
+                100% { transform: translateY(100vh); }
+            }
+        `, document.styleSheets[0].cssRules.length);
+
+        function updateLeaderboard() {
+            db.collection("users").orderBy("clicks", "desc").limit(5).get().then(snapshot => {
+                let leaderboardHtml = "";
+                snapshot.forEach(doc => {
+                    let data = doc.data();
+                    leaderboardHtml += `<div class="leaderboard-item">${data.email}: ${data.clicks} clicks</div>`;
+                });
+                document.getElementById("leaderboard").innerHTML = leaderboardHtml;
+            });
+        }
+
+        function login() {
+            let provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).then(result => {
+                user = result.user;
+                document.getElementById("user-email").innerText = user.email;
+                document.getElementById("logout-btn").style.display = "inline";
+                hideLogin();
+                loadUserData();
+            });
+        }
+
+        function logout() {
+            auth.signOut().then(() => {
+                user = null;
+                document.getElementById("user-email").innerText = "Not Logged In";
+                document.getElementById("click-count").innerText = "0";
+                document.getElementById("logout-btn").style.display = "none";
+            });
+        }
+
+        function loadUserData() {
+            if (user) {
                 db.collection("users").doc(user.uid).get().then(doc => {
                     if (doc.exists) {
-                        clickCount = doc.data().clicks || 0;
-                        clickDisplay.textContent = clickCount;
-                        document.getElementById("joinDate").textContent = doc.data().joined || "N/A";
+                        let data = doc.data();
+                        document.getElementById("join-date").innerText = `Joined: ${data.joinDate}`;
+                        document.getElementById("playtime").innerText = `Playtime: ${data.playtime || 0} mins`;
                     } else {
                         db.collection("users").doc(user.uid).set({
+                            email: user.email,
+                            joinDate: new Date().toLocaleDateString(),
                             clicks: 0,
-                            joined: new Date().toLocaleDateString()
+                            playtime: 0
                         });
                     }
+                    updateLeaderboard();
                 });
-            } else {
-                document.getElementById("loginBtn").style.display = "inline";
-                document.getElementById("logoutBtn").style.display = "none";
-                document.getElementById("userEmail").textContent = "N/A";
             }
-        });
+        }
 
-        // Login / Logout
-        document.getElementById("loginBtn").addEventListener("click", () => {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            auth.signInWithPopup(provider);
-        });
+        function showLogin() {
+            document.getElementById("overlay").style.display = "block";
+            document.getElementById("login-popup").style.display = "block";
+        }
 
-        document.getElementById("logoutBtn").addEventListener("click", () => {
-            auth.signOut();
-        });
+        function hideLogin() {
+            document.getElementById("overlay").style.display = "none";
+            document.getElementById("login-popup").style.display = "none";
+        }
 
-        // Show Login Popup
-        setTimeout(() => {
-            document.getElementById("loginPopup").style.display = "block";
-        }, 3000);
-
-        document.getElementById("popupLoginBtn").addEventListener("click", () => {
-            auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                loadUserData();
+            } else {
+                document.getElementById("logout-btn").style.display = "none";
+            }
         });
     </script>
 </body>
