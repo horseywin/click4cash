@@ -4,7 +4,58 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Click4Cash</title>
-    <link rel="stylesheet" href="styles.css">
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f3f4f6;
+            color: #333;
+        }
+
+        h1 {
+            color: #2d3748;
+            margin-top: 50px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #3182ce;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #63b3ed;
+        }
+
+        #clickCount {
+            font-size: 24px;
+            margin-top: 20px;
+            color: #4a5568;
+        }
+
+        #auth-container {
+            margin-top: 30px;
+        }
+
+        #leaderboard {
+            list-style-type: none;
+            padding: 0;
+            margin-top: 50px;
+        }
+
+        #leaderboard li {
+            font-size: 18px;
+            margin: 10px 0;
+        }
+    </style>
+
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js"></script>
@@ -28,7 +79,7 @@
     </div>
 
     <script>
-        // Firebase configuration (your credentials)
+        // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCQeZ1EOPbHOy8_wOBBvlchZwj8tTCZM2w",
             authDomain: "click4cash-7e106.firebaseapp.com",
@@ -39,7 +90,7 @@
         };
 
         // Initialize Firebase
-        const app = firebase.initializeApp(firebaseConfig);
+        firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const firestore = firebase.firestore();
 
