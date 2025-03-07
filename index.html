@@ -98,6 +98,18 @@
             margin-bottom: 10px;
             color: #ccc;
         }
+        .leaderboard-item {
+            padding: 15px;
+            border-radius: 8px;
+            background: #444;
+            margin-bottom: 15px;
+            text-align: left;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        .leaderboard-item:hover {
+            background: #666;
+        }
         /* Animations */
         @keyframes slideUp {
             0% { transform: translateY(30px); opacity: 0; }
@@ -127,42 +139,6 @@
                 transform: translateY(100%);
             }
         }
-        /* Email and password input styling */
-        input[type="email"], input[type="password"] {
-            width: 100%;
-            padding: 12px;
-            margin: 8px 0;
-            border: 2px solid #444;
-            border-radius: 8px;
-            background: #222;
-            color: #fff;
-            font-size: 16px;
-            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
-            transition: all 0.3s ease;
-        }
-        input[type="email"]:focus, input[type="password"]:focus {
-            border-color: #4CAF50;
-            outline: none;
-        }
-        /* Hide popups by default */
-        #overlay, #login-popup, #signup-popup {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            justify-content: center;
-            align-items: center;
-        }
-        #login-popup, #signup-popup {
-            background: #222;
-            padding: 30px;
-            border-radius: 10px;
-            max-width: 400px;
-            width: 80%;
-        }
     </style>
 </head>
 <body>
@@ -179,7 +155,6 @@
         <div class="card">
             <h3>Your Clicks</h3>
             <p id="click-count">0</p>
-            <h4 id="chance">Chance of Winning: 0%</h4>
         </div>
         <div class="card">
             <h3>Leaderboard</h3>
@@ -190,6 +165,7 @@
             <p id="user-email">Not Logged In</p>
             <p id="join-date"></p>
             <p id="playtime"></p>
+            <p id="chance-of-winning">Chance of Winning: 100%</p>
         </div>
     </div>
 
@@ -228,92 +204,74 @@
             appId: "1:689145020485:web:458d083ec5bca7d8b3e32c"
         };
         firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth;
-        const firestore = firebase.firestore;
-        let clickCount = 0; // Track the user's clicks
+        const auth = firebase.auth();
+        const db = firebase.firestore();
 
-        // Function to increment clicks
-        function incrementClicks() {
-            clickCount++;
-            document.getElementById("click-count").innerText = clickCount;
-            updateWinningChance(); // Update the chance whenever the click count changes
-        }
-
-        // Function to calculate and update the chance of winning
-        function updateWinningChance() {
-            const maxClicks = 1000; // Maximum number of clicks for a 100% chance (adjust as necessary)
-            const chance = Math.min((clickCount / maxClicks) * 100, 100); // Percentage chance
-            document.getElementById("chance").innerText = `Chance of Winning: ${Math.round(chance)}%`;
-        }
-
-        // Login and sign-up functions
-        function login(event) {
-            event.preventDefault();
-            const email = document.getElementById("email").value;
-            const password = document.getElementById("password").value;
-            auth().signInWithEmailAndPassword(email, password)
-                .then((userCredential) => {
-                    hideLogin();
-                    alert("Login successful!");
-                    document.getElementById("logout-btn").style.display = "block";
-                    document.getElementById("login-btn").style.display = "none";
-                    document.getElementById("signup-btn").style.display = "none";
-                })
-                .catch((error) => {
-                    alert(error.message);
+        // Fetch leaderboard data and update
+        function updateLeaderboard() {
+            db.collection("users").orderBy("clicks", "desc").limit(10).get()
+                .then((snapshot) => {
+                    let leaderboardHTML = '';
+                    snapshot.forEach(doc => {
+                        const userData = doc.data();
+                        leaderboardHTML += `<div class="leaderboard-item">${userData.email} - ${userData.clicks} clicks</div>`;
+                    });
+                    document.getElementById("leaderboard").innerHTML = leaderboardHTML;
                 });
         }
 
-        // Sign-up function
+        // Update chance of winning based on number of users
+        function updateChanceOfWinning() {
+            db.collection("users").get().then(snapshot => {
+                const userCount = snapshot.size;
+                const chance = userCount > 1 ? Math.round((1 / userCount) * 100) : 100;
+                document.getElementById("chance-of-winning").textContent = `Chance of Winning: ${chance}%`;
+            });
+        }
+
+        // User sign-up logic
         function signUp(event) {
             event.preventDefault();
             const email = document.getElementById("signup-email").value;
             const password = document.getElementById("signup-password").value;
-            auth().createUserWithEmailAndPassword(email, password)
-                .then((userCredential) => {
+            auth.createUserWithEmailAndPassword(email, password).then(cred => {
+                db.collection("users").doc(cred.user.uid).set({
+                    email: email,
+                    clicks: 0,
+                    joinDate: new Date().toLocaleDateString()
+                }).then(() => {
                     hideSignUp();
-                    alert("Sign up successful!");
-                    document.getElementById("logout-btn").style.display = "block";
-                    document.getElementById("login-btn").style.display = "none";
-                    document.getElementById("signup-btn").style.display = "none";
-                })
-                .catch((error) => {
-                    alert(error.message);
+                    alert("Sign-up successful!");
+                    updateLeaderboard();
                 });
-        }
-
-        // Logout function
-        function logout() {
-            auth().signOut().then(() => {
-                alert("Logged out successfully");
-                document.getElementById("logout-btn").style.display = "none";
-                document.getElementById("login-btn").style.display = "block";
-                document.getElementById("signup-btn").style.display = "block";
+            }).catch(err => {
+                alert(err.message);
             });
         }
 
-        // Function to show login popup
-        function showLogin() {
-            document.getElementById("overlay").style.display = "block";
-            document.getElementById("login-popup").style.display = "block";
+        // User login logic
+        function login(event) {
+            event.preventDefault();
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            auth.signInWithEmailAndPassword(email, password).then(cred => {
+                updateLeaderboard();
+                updateChanceOfWinning();
+                hideLogin();
+                alert("Login successful!");
+            }).catch(err => {
+                alert(err.message);
+            });
         }
 
-        // Function to hide login popup
-        function hideLogin() {
-            document.getElementById("overlay").style.display = "none";
-            document.getElementById("login-popup").style.display = "none";
-        }
-
-        // Function to show sign up popup
-        function showSignUp() {
-            document.getElementById("overlay").style.display = "block";
-            document.getElementById("signup-popup").style.display = "block";
-        }
-
-        // Function to hide sign up popup
-        function hideSignUp() {
-            document.getElementById("overlay").style.display = "none";
-            document.getElementById("signup-popup").style.display = "none";
+        // User logout logic
+        function logout() {
+            auth.signOut().then(() => {
+                document.getElementById("click-count").textContent = 0;
+                document.getElementById("chance-of-winning").textContent = "Chance of Winning: 100%";
+                document.getElementById("user-email").textContent = "Not Logged In";
+                updateLeaderboard();
+            });
         }
 
         // Add space background with stars animation
@@ -330,7 +288,42 @@
                 spaceBackground.appendChild(star);
             }
         }
+
+        // Add stars on page load
         createStars();
+
+        // Real-time updates
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById("user-email").textContent = user.email;
+                document.getElementById("click-btn").style.display = "block";
+                document.getElementById("logout-btn").style.display = "block";
+                document.getElementById("login-btn").style.display = "none";
+                document.getElementById("signup-btn").style.display = "none";
+                updateLeaderboard();
+                updateChanceOfWinning();
+            } else {
+                document.getElementById("click-btn").style.display = "none";
+                document.getElementById("logout-btn").style.display = "none";
+                document.getElementById("login-btn").style.display = "block";
+                document.getElementById("signup-btn").style.display = "block";
+            }
+        });
+
+        // Increment clicks and update the database
+        function incrementClicks() {
+            const user = auth.currentUser;
+            if (user) {
+                const userRef = db.collection("users").doc(user.uid);
+                userRef.update({
+                    clicks: firebase.firestore.FieldValue.increment(1)
+                }).then(() => {
+                    document.getElementById("click-count").textContent = parseInt(document.getElementById("click-count").textContent) + 1;
+                    updateLeaderboard();
+                    updateChanceOfWinning();
+                });
+            }
+        }
     </script>
 </body>
 </html>
