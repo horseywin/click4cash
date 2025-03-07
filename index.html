@@ -1,172 +1,138 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Click4Cash</title>
-
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background-color: #f3f4f6;
-            color: #333;
-        }
-
-        h1 {
-            color: #2d3748;
-            margin-top: 50px;
-        }
-
-        button {
-            padding: 10px 20px;
-            font-size: 18px;
-            background-color: #3182ce;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-
-        button:hover {
-            background-color: #63b3ed;
-        }
-
-        #clickCount {
-            font-size: 24px;
-            margin-top: 20px;
-            color: #4a5568;
-        }
-
-        #auth-container {
-            margin-top: 30px;
-        }
-
-        #leaderboard {
-            list-style-type: none;
-            padding: 0;
-            margin-top: 50px;
-        }
-
-        #leaderboard li {
-            font-size: 18px;
-            margin: 10px 0;
-        }
-    </style>
-
-    <!-- Firebase v8.x.x (non-modular version) -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-functions.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Click4Cash</title>
+  <style>
+    /* Your existing CSS for styling */
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f3f4f6;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      text-align: center;
+      padding: 20px;
+      border-radius: 10px;
+      background-color: white;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .btn {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    .btn:hover {
+      background-color: #45a049;
+    }
+    .error {
+      color: red;
+    }
+  </style>
 </head>
 <body>
+  <div class="container">
+    <h1>Welcome to Click4Cash</h1>
+    <button class="btn" id="clickButton">Click me!</button>
+    <p>Clicks: <span id="clickCount">0</span></p>
+    <br><br>
+    <button class="btn" id="loginButton">Login</button>
+    <button class="btn" id="logoutButton">Logout</button>
+    <div class="error" id="errorMessage"></div>
+  </div>
 
-    <h1>Click4Cash</h1>
-    <button id="clickButton">Click Me!</button>
-    <div id="clickCount">Clicks: 0</div>
+  <!-- Add Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-firestore.js"></script>
 
-    <div id="auth-container">
-        <button id="loginButton">Log In</button>
-        <button id="logoutButton">Log Out</button>
-    </div>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCQeZ1EOPbHOy8_wOBBvlchZwj8tTCZM2w",
+      authDomain: "click4cash-7e106.firebaseapp.com",
+      projectId: "click4cash-7e106",
+      storageBucket: "click4cash-7e106.appspot.com",
+      messagingSenderId: "689145020485",
+      appId: "1:689145020485:web:458d083ec5bca7d8b3e32c",
+      measurementId: "G-NNKKXT9SS4"
+    };
 
-    <h2>Leaderboard</h2>
-    <ul id="leaderboard"></ul>
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const clickCountRef = db.collection('users').doc('userId'); // Replace 'userId' with actual user ID after login
 
-    <script>
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyCQeZ1EOPbHOy8_wOBBvlchZwj8tTCZM2w",
-            authDomain: "click4cash-7e106.firebaseapp.com",
-            projectId: "click4cash-7e106",
-            storageBucket: "click4cash-7e106.firebasestorage.app",
-            messagingSenderId: "689145020485",
-            appId: "1:689145020485:web:458d083ec5bca7d8b3e32c"
-        };
+    const clickButton = document.getElementById("clickButton");
+    const clickCountDisplay = document.getElementById("clickCount");
+    const loginButton = document.getElementById("loginButton");
+    const logoutButton = document.getElementById("logoutButton");
+    const errorMessage = document.getElementById("errorMessage");
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-
-        // Authentication and Firestore references
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-
-        const clickButton = document.getElementById("clickButton");
-        const clickCountDisplay = document.getElementById("clickCount");
-        const loginButton = document.getElementById("loginButton");
-        const logoutButton = document.getElementById("logoutButton");
-        const leaderboard = document.getElementById("leaderboard");
-
-        let clickCount = 0;
-        let userId = null;
-
-        // Login and Logout functions
-        loginButton.addEventListener("click", () => {
-            auth.signInAnonymously().then((userCredential) => {
-                userId = userCredential.user.uid;
-                updateUI();
-            });
+    // Function to login
+    loginButton.addEventListener('click', () => {
+      const email = prompt("Enter your email");
+      const password = prompt("Enter your password");
+      auth.signInWithEmailAndPassword(email, password)
+        .then(userCredential => {
+          errorMessage.textContent = '';
+          console.log('Logged in');
+          const userId = userCredential.user.uid;
+          loadUserData(userId);
+        })
+        .catch(error => {
+          errorMessage.textContent = error.message;
         });
+    });
 
-        logoutButton.addEventListener("click", () => {
-            auth.signOut().then(() => {
-                userId = null;
-                updateUI();
-            });
+    // Function to logout
+    logoutButton.addEventListener('click', () => {
+      auth.signOut()
+        .then(() => {
+          errorMessage.textContent = '';
+          console.log('Logged out');
+          clickCountDisplay.textContent = 0; // Reset the click count when logged out
+        })
+        .catch(error => {
+          errorMessage.textContent = error.message;
         });
+    });
 
-        // Update UI based on user authentication status
-        function updateUI() {
-            if (userId) {
-                loginButton.style.display = "none";
-                logoutButton.style.display = "inline";
-                fetchLeaderboard();
-            } else {
-                loginButton.style.display = "inline";
-                logoutButton.style.display = "none";
-            }
+    // Function to load user data from Firestore
+    function loadUserData(userId) {
+      clickCountRef.set({
+        userId: userId,
+        clicks: 0
+      });
+
+      clickCountRef.onSnapshot(doc => {
+        if (doc.exists) {
+          clickCountDisplay.textContent = doc.data().clicks;
         }
+      });
+    }
 
-        // Click button functionality
-        clickButton.addEventListener("click", () => {
-            if (userId) {
-                clickCount++;
-                clickCountDisplay.textContent = `Clicks: ${clickCount}`;
-                saveClickData();
-            } else {
-                alert("Please log in to start clicking!");
-            }
+    // Function to handle click count
+    clickButton.addEventListener('click', () => {
+      const user = auth.currentUser;
+      if (user) {
+        const userId = user.uid;
+        const userRef = db.collection('users').doc(userId);
+
+        userRef.update({
+          clicks: firebase.firestore.FieldValue.increment(1)
         });
-
-        // Save click count to Firestore
-        function saveClickData() {
-            const userRef = db.collection("users").doc(userId);
-            userRef.set({
-                clicks: clickCount
-            }).then(() => {
-                console.log("Click data saved!");
-            }).catch((error) => {
-                console.error("Error saving click data: ", error);
-            });
-        }
-
-        // Fetch leaderboard from Firestore
-        function fetchLeaderboard() {
-            db.collection("users").orderBy("clicks", "desc").limit(5).get().then((querySnapshot) => {
-                leaderboard.innerHTML = "";
-                querySnapshot.forEach((doc) => {
-                    const user = doc.data();
-                    const li = document.createElement("li");
-                    li.textContent = `User: ${doc.id} - Clicks: ${user.clicks}`;
-                    leaderboard.appendChild(li);
-                });
-            });
-        }
-
-        // Initialize UI
-        updateUI();
-    </script>
+      }
+    });
+  </script>
 </body>
 </html>
