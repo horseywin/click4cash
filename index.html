@@ -7,8 +7,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <link rel="icon" href="favicon.ico" type="image/x-icon">
     <style>
+        /* Basic reset and space theme */
         * {
             margin: 0;
             padding: 0;
@@ -98,61 +98,12 @@
             margin-bottom: 10px;
             color: #ccc;
         }
-        #login-popup, #signup-popup {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #333;
-            padding: 40px;
-            border-radius: 12px;
-            text-align: center;
-            width: 320px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-            opacity: 0;
-            animation: fadeIn 0.3s ease-in forwards;
-            z-index: 1000;
-        }
-        #login-popup button, #signup-popup button {
-            width: 100%;
-            margin-top: 15px;
-            background: #4CAF50;
-        }
-        #overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            z-index: 500;
-        }
-        input[type="email"], input[type="password"] {
-            width: 100%;
-            padding: 12px;
-            margin: 8px 0;
-            border: 2px solid #444;
-            border-radius: 8px;
-            background: #222;
-            color: #fff;
-            font-size: 16px;
-            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
-            transition: all 0.3s ease;
-        }
-        input[type="email"]:focus, input[type="password"]:focus {
-            border-color: #4CAF50;
-            outline: none;
-        }
+        /* Animations */
         @keyframes slideUp {
             0% { transform: translateY(30px); opacity: 0; }
             100% { transform: translateY(0); opacity: 1; }
         }
-        @keyframes fadeIn {
-            0% { opacity: 0; }
-            100% { opacity: 1; }
-        }
+        /* Space animation */
         .space-background {
             position: absolute;
             top: 0;
@@ -176,6 +127,42 @@
                 transform: translateY(100%);
             }
         }
+        /* Email and password input styling */
+        input[type="email"], input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 2px solid #444;
+            border-radius: 8px;
+            background: #222;
+            color: #fff;
+            font-size: 16px;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s ease;
+        }
+        input[type="email"]:focus, input[type="password"]:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+        /* Hide popups by default */
+        #overlay, #login-popup, #signup-popup {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+        }
+        #login-popup, #signup-popup {
+            background: #222;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 400px;
+            width: 80%;
+        }
     </style>
 </head>
 <body>
@@ -192,6 +179,7 @@
         <div class="card">
             <h3>Your Clicks</h3>
             <p id="click-count">0</p>
+            <h4 id="chance">Chance of Winning: 0%</h4>
         </div>
         <div class="card">
             <h3>Leaderboard</h3>
@@ -205,10 +193,11 @@
         </div>
     </div>
 
+    <!-- Login Popup -->
     <div id="overlay"></div>
     <div id="login-popup">
         <h2>Sign In</h2>
-        <form id="login-form" onsubmit="login(event)">
+        <form onsubmit="login(event)">
             <input type="email" id="email" placeholder="Email" required><br>
             <input type="password" id="password" placeholder="Password" required><br>
             <button type="submit">Login</button>
@@ -216,9 +205,10 @@
         <button onclick="hideLogin()">Cancel</button>
     </div>
 
+    <!-- Sign Up Popup -->
     <div id="signup-popup">
         <h2>Sign Up</h2>
-        <form id="signup-form" onsubmit="signUp(event)">
+        <form onsubmit="signUp(event)">
             <input type="email" id="signup-email" placeholder="Email" required><br>
             <input type="password" id="signup-password" placeholder="Password" required><br>
             <button type="submit">Sign Up</button>
@@ -226,7 +216,7 @@
         <button onclick="hideSignUp()">Cancel</button>
     </div>
 
-    <div class="space-background"></div>
+    <div class="space-background" id="space-background"></div>
 
     <script>
         const firebaseConfig = {
@@ -239,35 +229,24 @@
         };
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth;
+        const firestore = firebase.firestore;
+        let clickCount = 0; // Track the user's clicks
 
-        let clickCount = 0;
-
+        // Function to increment clicks
         function incrementClicks() {
-            clickCount += 1;
+            clickCount++;
             document.getElementById("click-count").innerText = clickCount;
+            updateWinningChance(); // Update the chance whenever the click count changes
         }
 
-        function showLogin() {
-            document.getElementById("login-popup").style.display = "block";
-            document.getElementById("overlay").style.display = "block";
+        // Function to calculate and update the chance of winning
+        function updateWinningChance() {
+            const maxClicks = 1000; // Maximum number of clicks for a 100% chance (adjust as necessary)
+            const chance = Math.min((clickCount / maxClicks) * 100, 100); // Percentage chance
+            document.getElementById("chance").innerText = `Chance of Winning: ${Math.round(chance)}%`;
         }
 
-        function hideLogin() {
-            document.getElementById("login-popup").style.display = "none";
-            document.getElementById("overlay").style.display = "none";
-        }
-
-        function showSignUp() {
-            document.getElementById("signup-popup").style.display = "block";
-            document.getElementById("overlay").style.display = "block";
-        }
-
-        function hideSignUp() {
-            document.getElementById("signup-popup").style.display = "none";
-            document.getElementById("overlay").style.display = "none";
-        }
-
-        // Login function
+        // Login and sign-up functions
         function login(event) {
             event.preventDefault();
             const email = document.getElementById("email").value;
@@ -276,6 +255,9 @@
                 .then((userCredential) => {
                     hideLogin();
                     alert("Login successful!");
+                    document.getElementById("logout-btn").style.display = "block";
+                    document.getElementById("login-btn").style.display = "none";
+                    document.getElementById("signup-btn").style.display = "none";
                 })
                 .catch((error) => {
                     alert(error.message);
@@ -291,6 +273,9 @@
                 .then((userCredential) => {
                     hideSignUp();
                     alert("Sign up successful!");
+                    document.getElementById("logout-btn").style.display = "block";
+                    document.getElementById("login-btn").style.display = "none";
+                    document.getElementById("signup-btn").style.display = "none";
                 })
                 .catch((error) => {
                     alert(error.message);
@@ -304,10 +289,48 @@
                 document.getElementById("logout-btn").style.display = "none";
                 document.getElementById("login-btn").style.display = "block";
                 document.getElementById("signup-btn").style.display = "block";
-            }).catch((error) => {
-                alert(error.message);
             });
         }
+
+        // Function to show login popup
+        function showLogin() {
+            document.getElementById("overlay").style.display = "block";
+            document.getElementById("login-popup").style.display = "block";
+        }
+
+        // Function to hide login popup
+        function hideLogin() {
+            document.getElementById("overlay").style.display = "none";
+            document.getElementById("login-popup").style.display = "none";
+        }
+
+        // Function to show sign up popup
+        function showSignUp() {
+            document.getElementById("overlay").style.display = "block";
+            document.getElementById("signup-popup").style.display = "block";
+        }
+
+        // Function to hide sign up popup
+        function hideSignUp() {
+            document.getElementById("overlay").style.display = "none";
+            document.getElementById("signup-popup").style.display = "none";
+        }
+
+        // Add space background with stars animation
+        function createStars() {
+            const spaceBackground = document.getElementById("space-background");
+            for (let i = 0; i < 100; i++) {
+                let star = document.createElement("div");
+                star.classList.add("star");
+                const size = Math.random() * 3 + 1; // Random size of stars
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                star.style.left = `${Math.random() * 100}%`;
+                star.style.top = `${Math.random() * 100}%`;
+                spaceBackground.appendChild(star);
+            }
+        }
+        createStars();
     </script>
 </body>
 </html>
