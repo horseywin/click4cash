@@ -5,16 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Click4Cash</title>
     <style>
-        /* Basic CSS */
+        /* Cool Modern CSS */
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', sans-serif;
             margin: 0;
             padding: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-color: #f7f7f7;
-            color: #333;
+            background: linear-gradient(to right, #ff7e5f, #feb47b);
+            color: white;
+            height: 100vh;
+            justify-content: center;
+            text-align: center;
         }
         nav {
             width: 100%;
@@ -24,6 +27,10 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
         }
         nav a {
             color: white;
@@ -64,7 +71,7 @@
         #click-btn {
             font-size: 24px;
             padding: 20px 40px;
-            background-color: #28a745;
+            background-color: #ff6347;
             border: none;
             border-radius: 8px;
             color: white;
@@ -73,15 +80,56 @@
             margin-top: 20px;
         }
         #click-btn:hover {
+            background-color: #d45d3f;
+        }
+        .leaderboard {
+            width: 80%;
+            margin-top: 30px;
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 8px;
+            padding: 20px;
+            color: white;
+        }
+        .leaderboard ul {
+            list-style: none;
+            padding: 0;
+        }
+        .leaderboard li {
+            font-size: 18px;
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+        .leaderboard li:last-child {
+            border-bottom: none;
+        }
+        .popup {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .popup-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .popup-content button {
+            background-color: #28a745;
+            padding: 10px;
+            color: white;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .popup-content button:hover {
             background-color: #218838;
-        }
-        .welcome {
-            margin-top: 20px;
-        }
-        #click-count {
-            font-size: 24px;
-            margin-top: 10px;
-            color: #333;
         }
     </style>
 </head>
@@ -114,7 +162,7 @@
     </div>
 
     <!-- Welcome Message -->
-    <div id="welcome-msg" class="welcome" style="display:none;">
+    <div id="welcome-msg" style="display:none;">
         <p>Welcome, <span id="user-email"></span>!</p>
     </div>
 
@@ -124,10 +172,26 @@
     <!-- Click Counter Display -->
     <div id="click-count" style="display:none;">Clicks: 0</div>
 
+    <!-- Leaderboard Section -->
+    <div id="leaderboard" class="leaderboard" style="display:none;">
+        <h3>Leaderboard</h3>
+        <ul id="leaderboard-list">
+            <!-- Dynamically filled with top users -->
+        </ul>
+    </div>
+
+    <!-- Sign In Popup -->
+    <div id="sign-in-popup" class="popup">
+        <div class="popup-content">
+            <h3>Please Sign In to Continue</h3>
+            <button id="popup-signin-btn">Sign In</button>
+        </div>
+    </div>
+
     <!-- Firebase App (CDN with module support) -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.14.0/firebase-app.js';
-        import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.14.0/firebase-firestore.js';
+        import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, limit, getDocs } from 'https://www.gstatic.com/firebasejs/9.14.0/firebase-firestore.js';
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.14.0/firebase-auth.js';
 
         // Firebase Configuration (replace with your API keys)
@@ -158,6 +222,7 @@
                 document.getElementById('login-btn').style.display = 'none';
                 document.getElementById('signup-btn').style.display = 'none';
                 document.getElementById('logout-btn').style.display = 'inline-block';
+                loadLeaderboard();  // Load leaderboard on login
             } else {
                 document.getElementById('login-btn').style.display = 'inline-block';
                 document.getElementById('signup-btn').style.display = 'inline-block';
@@ -165,18 +230,16 @@
                 document.getElementById('click-btn').style.display = 'none';
                 document.getElementById('click-count').style.display = 'none';
                 document.getElementById('welcome-msg').style.display = 'none';
+                document.getElementById('leaderboard').style.display = 'none';
+                document.getElementById('sign-in-popup').style.display = 'flex';
             }
         });
 
         // Login functionality
         document.getElementById('login-btn').addEventListener('click', () => {
-            document.getElementById('login-form').style.display = 'block';
-            document.getElementById('signup-form').style.display = 'none';
-        });
+            document
 
-        document.getElementById('signup-btn').addEventListener('click', () => {
-            document.getElementById('signup-form').style.display = 'block';
-            document.getElementById('login-form').style.display = 'none';
+.getElementById('login-form').style.display = 'block';
         });
 
         document.getElementById('login-submit').addEventListener('click', async () => {
@@ -186,11 +249,15 @@
             try {
                 await signInWithEmailAndPassword(auth, email, password);
             } catch (error) {
-                console.error(error.message);
+                alert("Login failed: " + error.message);
             }
         });
 
-        // Sign Up functionality
+        // Sign up functionality
+        document.getElementById('signup-btn').addEventListener('click', () => {
+            document.getElementById('signup-form').style.display = 'block';
+        });
+
         document.getElementById('signup-submit').addEventListener('click', async () => {
             const email = document.getElementById('signup-email').value;
             const password = document.getElementById('signup-password').value;
@@ -198,35 +265,53 @@
             try {
                 await createUserWithEmailAndPassword(auth, email, password);
             } catch (error) {
-                console.error(error.message);
+                alert("Sign up failed: " + error.message);
             }
         });
 
         // Logout functionality
-        document.getElementById('logout-btn').addEventListener('click', () => {
-            signOut(auth);
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            await signOut(auth);
         });
 
-        // Click tracking functionality
-        const button = document.getElementById('click-btn');
+        // Click Button Event
         let clickCount = 0;
-
-        button.addEventListener('click', async () => {
+        document.getElementById('click-btn').addEventListener('click', async () => {
             clickCount++;
             document.getElementById('click-count').textContent = `Clicks: ${clickCount}`;
 
+            // Save click count to Firestore
             try {
-                // Save the click count to Firestore
                 await addDoc(collection(db, 'clicks'), {
-                    count: clickCount,
+                    email: auth.currentUser.email,
+                    clicks: clickCount,
                     timestamp: serverTimestamp()
                 });
-                console.log("Click count saved!");
             } catch (error) {
-                console.error("Error saving click count: ", error);
+                console.error("Error saving click count:", error);
             }
         });
-    </script>
 
+        // Load leaderboard from Firestore
+        async function loadLeaderboard() {
+            const leaderboardRef = query(collection(db, 'clicks'), orderBy('clicks', 'desc'), limit(5));
+            const querySnapshot = await getDocs(leaderboardRef);
+            const leaderboardList = document.getElementById('leaderboard-list');
+            leaderboardList.innerHTML = '';
+            querySnapshot.forEach(doc => {
+                const li = document.createElement('li');
+                li.textContent = `${doc.data().email}: ${doc.data().clicks}`;
+                leaderboardList.appendChild(li);
+            });
+
+            document.getElementById('leaderboard').style.display = 'block';
+        }
+
+        // Sign-in popup button event
+        document.getElementById('popup-signin-btn').addEventListener('click', () => {
+            document.getElementById('sign-in-popup').style.display = 'none';
+            document.getElementById('login-btn').click();
+        });
+    </script>
 </body>
 </html>
