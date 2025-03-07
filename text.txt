@@ -1,0 +1,8 @@
+const firebaseConfig = {
+            apiKey: "AIzaSyCQeZ1EOPbHOy8_wOBBvlchZwj8tTCZM2w",
+            authDomain: "click4cash-7e106.firebaseapp.com",
+            projectId: "click4cash-7e106",
+            storageBucket: "click4cash-7e106.firebasestorage.app",
+            messagingSenderId: "689145020485",
+            appId: "1:689145020485:web:458d083ec5bca7d8b3e32c"
+        };

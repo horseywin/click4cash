@@ -55,28 +55,25 @@
         }
     </style>
 
-    <!-- Firebase SDK - Non-Modular Version -->
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-firestore.js"></script>
+    <!-- Firebase v8.x.x (non-modular version) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-functions.js"></script>
 </head>
 <body>
+
     <h1>Click4Cash</h1>
-    <p>Click the button as many times as possible! The top scorer wins!</p>
-
     <button id="clickButton">Click Me!</button>
-    <p id="clickCount">Clicks: 0</p>
+    <div id="clickCount">Clicks: 0</div>
 
-    <!-- User Authentication -->
     <div id="auth-container">
-        <button id="loginButton">Login</button>
-        <button id="logoutButton" style="display: none;">Logout</button>
+        <button id="loginButton">Log In</button>
+        <button id="logoutButton">Log Out</button>
     </div>
 
-    <div>
-        <h2>Leaderboard</h2>
-        <ul id="leaderboard"></ul>
-    </div>
+    <h2>Leaderboard</h2>
+    <ul id="leaderboard"></ul>
 
     <script>
         // Firebase configuration
@@ -91,86 +88,85 @@
 
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
+
+        // Authentication and Firestore references
         const auth = firebase.auth();
-        const firestore = firebase.firestore();
+        const db = firebase.firestore();
 
-        let userId = null;
+        const clickButton = document.getElementById("clickButton");
+        const clickCountDisplay = document.getElementById("clickCount");
+        const loginButton = document.getElementById("loginButton");
+        const logoutButton = document.getElementById("logoutButton");
+        const leaderboard = document.getElementById("leaderboard");
+
         let clickCount = 0;
+        let userId = null;
 
-        // Auth state change listener
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                userId = user.uid;
-                document.getElementById('loginButton').style.display = 'none';
-                document.getElementById('logoutButton').style.display = 'block';
-                loadLeaderboard();
-            } else {
+        // Login and Logout functions
+        loginButton.addEventListener("click", () => {
+            auth.signInAnonymously().then((userCredential) => {
+                userId = userCredential.user.uid;
+                updateUI();
+            });
+        });
+
+        logoutButton.addEventListener("click", () => {
+            auth.signOut().then(() => {
                 userId = null;
-                document.getElementById('loginButton').style.display = 'block';
-                document.getElementById('logoutButton').style.display = 'none';
+                updateUI();
+            });
+        });
+
+        // Update UI based on user authentication status
+        function updateUI() {
+            if (userId) {
+                loginButton.style.display = "none";
+                logoutButton.style.display = "inline";
+                fetchLeaderboard();
+            } else {
+                loginButton.style.display = "inline";
+                logoutButton.style.display = "none";
             }
-        });
+        }
 
-        // Login function
-        document.getElementById('loginButton').addEventListener('click', () => {
-            auth.signInAnonymously()
-                .then(() => {
-                    console.log('User logged in');
-                })
-                .catch((error) => {
-                    console.error(error.message);
-                });
-        });
-
-        // Logout function
-        document.getElementById('logoutButton').addEventListener('click', () => {
-            auth.signOut()
-                .then(() => {
-                    console.log('User logged out');
-                })
-                .catch((error) => {
-                    console.error(error.message);
-                });
-        });
-
-        // Button click tracking
-        document.getElementById('clickButton').addEventListener('click', () => {
+        // Click button functionality
+        clickButton.addEventListener("click", () => {
             if (userId) {
                 clickCount++;
-                document.getElementById('clickCount').textContent = `Clicks: ${clickCount}`;
-                updateClickCountInFirestore();
+                clickCountDisplay.textContent = `Clicks: ${clickCount}`;
+                saveClickData();
+            } else {
+                alert("Please log in to start clicking!");
             }
         });
 
-        // Update click count in Firestore
-        function updateClickCountInFirestore() {
-            firestore.collection('users').doc(userId).set({
-                clickCount: clickCount
-            })
-            .then(() => {
-                console.log('Click count updated');
-            })
-            .catch((error) => {
-                console.error('Error updating click count: ', error);
+        // Save click count to Firestore
+        function saveClickData() {
+            const userRef = db.collection("users").doc(userId);
+            userRef.set({
+                clicks: clickCount
+            }).then(() => {
+                console.log("Click data saved!");
+            }).catch((error) => {
+                console.error("Error saving click data: ", error);
             });
         }
 
-        // Load leaderboard from Firestore
-        function loadLeaderboard() {
-            firestore.collection('users').orderBy('clickCount', 'desc').limit(5).get()
-                .then((snapshot) => {
-                    const leaderboard = document.getElementById('leaderboard');
-                    leaderboard.innerHTML = '';
-                    snapshot.forEach(doc => {
-                        const li = document.createElement('li');
-                        li.textContent = `${doc.id}: ${doc.data().clickCount} clicks`;
-                        leaderboard.appendChild(li);
-                    });
-                })
-                .catch((error) => {
-                    console.error('Error loading leaderboard: ', error);
+        // Fetch leaderboard from Firestore
+        function fetchLeaderboard() {
+            db.collection("users").orderBy("clicks", "desc").limit(5).get().then((querySnapshot) => {
+                leaderboard.innerHTML = "";
+                querySnapshot.forEach((doc) => {
+                    const user = doc.data();
+                    const li = document.createElement("li");
+                    li.textContent = `User: ${doc.id} - Clicks: ${user.clicks}`;
+                    leaderboard.appendChild(li);
                 });
+            });
         }
+
+        // Initialize UI
+        updateUI();
     </script>
 </body>
 </html>
