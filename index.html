@@ -443,9 +443,21 @@
             auth.createUserWithEmailAndPassword(email, password)
                 .then((userCredential) => {
                     currentUser = userCredential.user;
-                    updateLeaderboard();
-                    hideSignUp();
-                    showWelcomePopup();
+
+                    // Create a new user document in Firestore
+                    const userRef = db.collection("users").doc(currentUser.uid);
+                    userRef.set({
+                        email: currentUser.email,
+                        clicks: 0, // Initialize clicks to 0
+                        joinDate: new Date().toISOString(), // Add join date
+                        playtime: 0 // Initialize playtime to 0
+                    }).then(() => {
+                        updateLeaderboard();
+                        hideSignUp();
+                        showWelcomePopup();
+                    }).catch((error) => {
+                        console.error("Error creating user document: ", error);
+                    });
                 })
                 .catch((error) => {
                     alert("Sign Up failed: " + error.message);
