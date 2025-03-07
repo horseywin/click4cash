@@ -8,7 +8,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <style>
-        /* Basic reset */
+        /* Basic reset and space theme */
         * {
             margin: 0;
             padding: 0;
@@ -24,8 +24,8 @@
             height: 100vh;
             flex-direction: column;
             gap: 30px;
-            position: relative;
             overflow: hidden;
+            position: relative;
         }
         #top-bar {
             position: absolute;
@@ -98,6 +98,48 @@
             margin-bottom: 10px;
             color: #ccc;
         }
+        #login-popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #333;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            width: 320px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            animation: fadeIn 0.3s ease-in forwards;
+        }
+        #login-popup button {
+            width: 100%;
+            margin-top: 15px;
+            background: #4CAF50;
+        }
+        #overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 5;
+        }
+        .leaderboard-item {
+            padding: 15px;
+            border-radius: 8px;
+            background: #444;
+            margin-bottom: 15px;
+            text-align: left;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        .leaderboard-item:hover {
+            background: #666;
+        }
         /* Animations */
         @keyframes slideUp {
             0% { transform: translateY(30px); opacity: 0; }
@@ -107,31 +149,36 @@
             0% { opacity: 0; }
             100% { opacity: 1; }
         }
-
-        /* Styles for the space background */
-        #space {
+        /* Space animation */
+        .space-background {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 0;
-            pointer-events: none;
+            z-index: -1;
         }
         .star {
             position: absolute;
             background-color: white;
             border-radius: 50%;
-            opacity: 0.7;
-            animation: moveStars linear infinite;
+            opacity: 0.6;
+            animation: moveStars 20s linear infinite;
+        }
+        @keyframes moveStars {
+            0% {
+                transform: translateY(0);
+            }
+            100% {
+                transform: translateY(100%);
+            }
         }
     </style>
 </head>
 <body>
-    <div id="space"></div> <!-- Space Background -->
-
     <div id="top-bar">
-        <button onclick="showLogin()">Login</button>
+        <button id="login-btn" onclick="showLogin()">Login</button>
+        <button id="signup-btn" onclick="showSignUp()">Sign Up</button>
         <button onclick="logout()" id="logout-btn" style="display: none;">Logout</button>
     </div>
 
@@ -159,9 +206,26 @@
     <div id="overlay"></div>
     <div id="login-popup">
         <h2>Sign In</h2>
-        <button onclick="login()">Login with Google</button>
+        <form onsubmit="login(event)">
+            <input type="email" id="email" placeholder="Email" required><br>
+            <input type="password" id="password" placeholder="Password" required><br>
+            <button type="submit">Login</button>
+        </form>
         <button onclick="hideLogin()">Cancel</button>
     </div>
+
+    <!-- Sign Up Popup -->
+    <div id="signup-popup">
+        <h2>Sign Up</h2>
+        <form onsubmit="signUp(event)">
+            <input type="email" id="signup-email" placeholder="Email" required><br>
+            <input type="password" id="signup-password" placeholder="Password" required><br>
+            <button type="submit">Sign Up</button>
+        </form>
+        <button onclick="hideSignUp()">Cancel</button>
+    </div>
+
+    <div class="space-background"></div>
 
     <script>
         const firebaseConfig = {
@@ -178,103 +242,30 @@
 
         let clicks = 0;
         let user = null;
-
-        // Space background with stars that move faster upon click
-        const space = document.getElementById('space');
-        const starCount = 150; // Number of stars
-
-        // Generate random stars
-        const stars = [];
-        for (let i = 0; i < starCount; i++) {
-            let star = document.createElement('div');
-            star.classList.add('star');
-            star.style.width = `${Math.random() * 3 + 1}px`; // Random size
-            star.style.height = star.style.width;
-            star.style.top = `${Math.random() * 100}vh`;
-            star.style.left = `${Math.random() * 100}vw`;
-            space.appendChild(star);
-            stars.push(star);
-        }
-
-        let speed = 1; // Default speed for the background movement
+        let spaceSpeed = 20; // Controls the speed of the space movement
 
         function incrementClicks() {
             if (user) {
                 clicks++;
                 document.getElementById("click-count").innerText = clicks;
                 db.collection("users").doc(user.uid).set({ clicks }, { merge: true });
-                // Increase speed upon click
-                speed += 0.05; 
-                updateStarsSpeed();
+                // Increase speed of space animation on click
+                spaceSpeed = Math.max(spaceSpeed - 0.1, 5); // Prevents going below a certain speed
+                updateStarSpeed();
             } else {
                 alert("Please log in first!");
             }
         }
-
-        // Update star movement speed
-        function updateStarsSpeed() {
-            stars.forEach(star => {
-                star.style.animationDuration = `${(speed * 10)}s`; // Adjust speed for each star
-            });
-        }
-
-        // Create star movement animation
-        document.styleSheets[0].insertRule(`
-            @keyframes moveStars {
-                0% { transform: translateY(0); }
-                100% { transform: translateY(100vh); }
-            }
-        `, document.styleSheets[0].cssRules.length);
 
         function updateLeaderboard() {
             db.collection("users").orderBy("clicks", "desc").limit(5).get().then(snapshot => {
                 let leaderboardHtml = "";
                 snapshot.forEach(doc => {
                     let data = doc.data();
-                    leaderboardHtml += `<div class="leaderboard-item">${data.email}: ${data.clicks} clicks</div>`;
+                    leaderboardHtml += `<div class="leaderboard-item">${data.email}: ${data.clicks}</div>`;
                 });
                 document.getElementById("leaderboard").innerHTML = leaderboardHtml;
             });
-        }
-
-        function login() {
-            let provider = new firebase.auth.GoogleAuthProvider();
-            auth.signInWithPopup(provider).then(result => {
-                user = result.user;
-                document.getElementById("user-email").innerText = user.email;
-                document.getElementById("logout-btn").style.display = "inline";
-                hideLogin();
-                loadUserData();
-            });
-        }
-
-        function logout() {
-            auth.signOut().then(() => {
-                user = null;
-                document.getElementById("user-email").innerText = "Not Logged In";
-                document.getElementById("click-count").innerText = "0";
-                document.getElementById("logout-btn").style.display = "none";
-            });
-        }
-
-        function loadUserData() {
-            if (user) {
-                db.collection("users").doc(user.uid).get().then(doc => {
-                    if (doc.exists) {
-                        let data = doc.data();
-                        document.getElementById("join-date").innerText = `Joined: ${data.joinDate}`;
-                        document.getElementById("playtime").innerText = `Playtime: ${data.playtime || 0} mins`;
-                    } else {
-                        db.collection("users").doc(user.uid).set({
-                            email: user.email,
-                            joinDate: new Date().toLocaleDateString(),
-                            clicks: 0,
-                            playtime: 0
-                        });
-                    }
-                    updateLeaderboard();
-                });
-            }
         }
 
         function showLogin() {
@@ -287,13 +278,107 @@
             document.getElementById("login-popup").style.display = "none";
         }
 
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                loadUserData();
-            } else {
+        function showSignUp() {
+            document.getElementById("overlay").style.display = "block";
+            document.getElementById("signup-popup").style.display = "block";
+        }
+
+        function hideSignUp() {
+            document.getElementById("overlay").style.display = "none";
+            document.getElementById("signup-popup").style.display = "none";
+        }
+
+        function login(event) {
+            event.preventDefault();
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            auth.signInWithEmailAndPassword(email, password)
+                .then(userCredential => {
+                    user = userCredential.user;
+                    document.getElementById("user-email").innerText = user.email;
+                    hideLogin();
+                    document.getElementById("login-btn").style.display = "none";
+                    document.getElementById("signup-btn").style.display = "none";
+                    document.getElementById("logout-btn").style.display = "inline-block";
+                    updateLeaderboard();
+                })
+                .catch(error => alert(error.message));
+        }
+
+        function signUp(event) {
+            event.preventDefault();
+            const email = document.getElementById("signup-email").value;
+            const password = document.getElementById("signup-password").value;
+            auth.createUserWithEmailAndPassword(email, password)
+                .then(userCredential => {
+                    user = userCredential.user;
+                    document.getElementById("user-email").innerText = user.email;
+                    hideSignUp();
+                    document.getElementById("login-btn").style.display = "none";
+                    document.getElementById("signup-btn").style.display = "none";
+                    document.getElementById("logout-btn").style.display = "inline-block";
+                    updateLeaderboard();
+                })
+                .catch(error => alert(error.message));
+        }
+
+        function logout() {
+            auth.signOut().then(() => {
+                user = null;
+                document.getElementById("user-email").innerText = "Not Logged In";
+                document.getElementById("login-btn").style.display = "inline-block";
+                document.getElementById("signup-btn").style.display = "inline-block";
                 document.getElementById("logout-btn").style.display = "none";
+                updateLeaderboard();
+            });
+        }
+
+        function setupSpaceBackground() {
+            const spaceDiv = document.querySelector('.space-background');
+            for (let i = 0; i < 100; i++) {
+                let star = document.createElement('div');
+                star.classList.add('star');
+                const size = Math.random() * 2 + 1;
+                const xPos = Math.random() * window.innerWidth;
+                const yPos = Math.random() * window.innerHeight;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                star.style.top = `${yPos}px`;
+                star.style.left = `${xPos}px`;
+                spaceDiv.appendChild(star);
             }
-        });
+        }
+
+        function updateStarSpeed() {
+            const stars = document.querySelectorAll('.star');
+            stars.forEach(star => {
+                star.style.animationDuration = `${spaceSpeed}s`;
+            });
+        }
+
+        function init() {
+            auth.onAuthStateChanged(userCredential => {
+                if (userCredential) {
+                    user = userCredential;
+                    document.getElementById("user-email").innerText = user.email;
+                    document.getElementById("login-btn").style.display = "none";
+                    document.getElementById("signup-btn").style.display = "none";
+                    document.getElementById("logout-btn").style.display = "inline-block";
+                    updateLeaderboard();
+                } else {
+                    user = null;
+                    document.getElementById("user-email").innerText = "Not Logged In";
+                    document.getElementById("login-btn").style.display = "inline-block";
+                    document.getElementById("signup-btn").style.display = "inline-block";
+                    document.getElementById("logout-btn").style.display = "none";
+                }
+            });
+
+            setupSpaceBackground();
+            updateStarSpeed();
+        }
+
+        window.onload = init;
     </script>
 </body>
 </html>
