@@ -78,6 +78,11 @@
         .welcome {
             margin-top: 20px;
         }
+        #click-count {
+            font-size: 24px;
+            margin-top: 10px;
+            color: #333;
+        }
     </style>
 </head>
 <body>
@@ -116,6 +121,9 @@
     <!-- Click Button -->
     <button id="click-btn" style="display:none;">Click Me!</button>
 
+    <!-- Click Counter Display -->
+    <div id="click-count" style="display:none;">Clicks: 0</div>
+
     <!-- Firebase App (CDN with module support) -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.14.0/firebase-app.js';
@@ -144,6 +152,7 @@
                 document.getElementById('welcome-msg').style.display = 'block';
                 document.getElementById('user-email').textContent = user.email;
                 document.getElementById('click-btn').style.display = 'inline-block';
+                document.getElementById('click-count').style.display = 'inline-block';
                 document.getElementById('login-form').style.display = 'none';
                 document.getElementById('signup-form').style.display = 'none';
                 document.getElementById('login-btn').style.display = 'none';
@@ -154,6 +163,7 @@
                 document.getElementById('signup-btn').style.display = 'inline-block';
                 document.getElementById('logout-btn').style.display = 'none';
                 document.getElementById('click-btn').style.display = 'none';
+                document.getElementById('click-count').style.display = 'none';
                 document.getElementById('welcome-msg').style.display = 'none';
             }
         });
@@ -203,7 +213,7 @@
 
         button.addEventListener('click', async () => {
             clickCount++;
-            console.log(`Button clicked ${clickCount} times`);
+            document.getElementById('click-count').textContent = `Clicks: ${clickCount}`;
 
             try {
                 // Save the click count to Firestore
