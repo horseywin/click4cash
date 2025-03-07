@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Click Competition</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+        }
+
+        button {
+            font-size: 20px;
+            padding: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Click as Fast as You Can!</h1>
+    <p>Clicks: <span id="clickCount">0</span></p>
+    <button id="clickButton">Click Me!</button>
+
+    <script>
+        let count = 0;
+        const clickButton = document.getElementById("clickButton");
+        const clickCount = document.getElementById("clickCount");
+
+        clickButton.addEventListener("click", () => {
+            count++;
+            clickCount.textContent = count;
+        });
+    </script>
+</body>
+</html>
