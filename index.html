@@ -173,6 +173,23 @@
                 transform: translateY(100%);
             }
         }
+        /* Email and password input styling */
+        input[type="email"], input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 2px solid #444;
+            border-radius: 8px;
+            background: #222;
+            color: #fff;
+            font-size: 16px;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s ease;
+        }
+        input[type="email"]:focus, input[type="password"]:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
     </style>
 </head>
 <body>
@@ -237,148 +254,4 @@
             appId: "1:689145020485:web:458d083ec5bca7d8b3e32c"
         };
         firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-
-        let clicks = 0;
-        let user = null;
-        let spaceSpeed = 20; // Controls the speed of the space movement
-
-        function incrementClicks() {
-            if (user) {
-                clicks++;
-                document.getElementById("click-count").innerText = clicks;
-                db.collection("users").doc(user.uid).set({ clicks }, { merge: true });
-                // Increase speed of space animation on click
-                spaceSpeed = Math.max(spaceSpeed - 0.1, 5); // Prevents going below a certain speed
-                updateStarSpeed();
-            } else {
-                alert("Please log in first!");
-            }
-        }
-
-        function updateLeaderboard() {
-            db.collection("users").orderBy("clicks", "desc").limit(5).get().then(snapshot => {
-                let leaderboardHtml = "";
-                snapshot.forEach(doc => {
-                    let data = doc.data();
-                    leaderboardHtml += `<div class="leaderboard-item">${data.email}: ${data.clicks}</div>`;
-                });
-                document.getElementById("leaderboard").innerHTML = leaderboardHtml;
-            });
-        }
-
-        function showLogin() {
-            document.getElementById("overlay").style.display = "block";
-            document.getElementById("login-popup").style.display = "block";
-        }
-
-        function hideLogin() {
-            document.getElementById("overlay").style.display = "none";
-            document.getElementById("login-popup").style.display = "none";
-        }
-
-        function showSignUp() {
-            document.getElementById("overlay").style.display = "block";
-            document.getElementById("signup-popup").style.display = "block";
-        }
-
-        function hideSignUp() {
-            document.getElementById("overlay").style.display = "none";
-            document.getElementById("signup-popup").style.display = "none";
-        }
-
-        function login(event) {
-            event.preventDefault();
-            const email = document.getElementById("email").value;
-            const password = document.getElementById("password").value;
-            auth.signInWithEmailAndPassword(email, password)
-                .then(userCredential => {
-                    user = userCredential.user;
-                    document.getElementById("user-email").innerText = user.email;
-                    hideLogin();
-                    document.getElementById("login-btn").style.display = "none";
-                    document.getElementById("signup-btn").style.display = "none";
-                    document.getElementById("logout-btn").style.display = "inline-block";
-                    updateLeaderboard();
-                })
-                .catch(error => alert(error.message));
-        }
-
-        function signUp(event) {
-            event.preventDefault();
-            const email = document.getElementById("signup-email").value;
-            const password = document.getElementById("signup-password").value;
-            auth.createUserWithEmailAndPassword(email, password)
-                .then(userCredential => {
-                    user = userCredential.user;
-                    document.getElementById("user-email").innerText = user.email;
-                    hideSignUp();
-                    document.getElementById("login-btn").style.display = "none";
-                    document.getElementById("signup-btn").style.display = "none";
-                    document.getElementById("logout-btn").style.display = "inline-block";
-                    updateLeaderboard();
-                })
-                .catch(error => alert(error.message));
-        }
-
-        function logout() {
-            auth.signOut().then(() => {
-                user = null;
-                document.getElementById("user-email").innerText = "Not Logged In";
-                document.getElementById("login-btn").style.display = "inline-block";
-                document.getElementById("signup-btn").style.display = "inline-block";
-                document.getElementById("logout-btn").style.display = "none";
-                updateLeaderboard();
-            });
-        }
-
-        function setupSpaceBackground() {
-            const spaceDiv = document.querySelector('.space-background');
-            for (let i = 0; i < 100; i++) {
-                let star = document.createElement('div');
-                star.classList.add('star');
-                const size = Math.random() * 2 + 1;
-                const xPos = Math.random() * window.innerWidth;
-                const yPos = Math.random() * window.innerHeight;
-                star.style.width = `${size}px`;
-                star.style.height = `${size}px`;
-                star.style.top = `${yPos}px`;
-                star.style.left = `${xPos}px`;
-                spaceDiv.appendChild(star);
-            }
-        }
-
-        function updateStarSpeed() {
-            const stars = document.querySelectorAll('.star');
-            stars.forEach(star => {
-                star.style.animationDuration = `${spaceSpeed}s`;
-            });
-        }
-
-        function init() {
-            auth.onAuthStateChanged(userCredential => {
-                if (userCredential) {
-                    user = userCredential;
-                    document.getElementById("user-email").innerText = user.email;
-                    document.getElementById("login-btn").style.display = "none";
-                    document.getElementById("signup-btn").style.display = "none";
-                    document.getElementById("logout-btn").style.display = "inline-block";
-                    updateLeaderboard();
-                } else {
-                    user = null;
-                    document.getElementById("user-email").innerText = "Not Logged In";
-                    document.getElementById("login-btn").style.display = "inline-block";
-                    document.getElementById("signup-btn").style.display = "inline-block";
-                    document.getElementById("logout-btn").style.display = "none";
-                }
-            });
-
-            setupSpaceBackground();
-            updateStarSpeed();
-        }
-
-        window.onload = init;
-    </script>
-</body>
-</html>
+        const auth = firebase.auth
