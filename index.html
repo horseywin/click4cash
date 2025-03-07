@@ -25,7 +25,7 @@
             flex-direction: column;
             gap: 30px;
             position: relative;
-            overflow-y: scroll; /* Allow scrolling */
+            overflow-y: scroll;
         }
         #top-bar {
             position: absolute;
@@ -141,8 +141,18 @@
         }
 
         /* Hide popups by default */
-        #login-popup, #signup-popup {
+        #login-popup, #signup-popup, #welcome-popup {
             display: none;
+        }
+        /* Overlay style */
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 5;
         }
     </style>
 </head>
@@ -165,6 +175,7 @@
         <div class="card">
             <h3>Leaderboard</h3>
             <div id="leaderboard"></div>
+            <button onclick="showFullLeaderboard()">See All</button>
         </div>
         <div class="card">
             <h3>Your Profile</h3>
@@ -173,6 +184,13 @@
             <p id="playtime"></p>
             <p id="chance-of-winning">Chance of Winning: 0%</p>
         </div>
+    </div>
+
+    <!-- Welcome Popup -->
+    <div id="welcome-popup">
+        <h2>Welcome to Click4Cash!</h2>
+        <p>Thank you for signing up. You will earn 100% of the ad revenue if you win!</p>
+        <button onclick="closeWelcomePopup()">Got It!</button>
     </div>
 
     <!-- Login Popup -->
@@ -193,6 +211,7 @@
         <form onsubmit="signUp(event)">
             <input type="email" id="signup-email" placeholder="Email" required><br>
             <input type="password" id="signup-password" placeholder="Password" required><br>
+            <p><small>By signing up, you agree to receive an email confirmation if you win!</small></p>
             <button type="submit">Sign Up</button>
         </form>
         <button onclick="hideSignUp()">Cancel</button>
@@ -213,153 +232,139 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
+        let currentUser = null;
+
         // Fetch leaderboard data and update
         function updateLeaderboard() {
-            db.collection("users").orderBy("clicks", "desc").limit(10).get()
+            db.collection("users").orderBy("clicks", "desc").get()
                 .then((snapshot) => {
                     let leaderboardHTML = '';
                     snapshot.forEach(doc => {
                         const userData = doc.data();
-                        leaderboardHTML += `<div class="leaderboard-item">${userData.email} - ${userData.clicks} clicks</div>`;
+                        if (userData.clicks !== undefined) {
+                            leaderboardHTML += `<div class="leaderboard-item">${userData.email} - ${userData.clicks} clicks</div>`;
+                        }
                     });
-                    document.getElementById("leaderboard").innerHTML = leaderboardHTML;
+                    document.getElementById('leaderboard').innerHTML = leaderboardHTML;
+                })
+                .catch(err => {
+                    console.error("Error fetching leaderboard: ", err);
                 });
         }
 
-        // Update chance of winning based on number of users
-        function updateChanceOfWinning() {
-            db.collection("users").get().then(snapshot => {
-                const userCount = snapshot.size;
-                const chance = userCount > 1 ? Math.round((1 / userCount) * 100) : 100;
-                document.getElementById("chance-of-winning").textContent = `Chance of Winning: ${chance}%`;
-            });
+        // Show full leaderboard
+        function showFullLeaderboard() {
+            window.location.href = "/leaderboard.html"; // You can create a new page for this
         }
 
-        // Show login popup
-        function showLogin() {
-            document.getElementById("login-popup").style.display = "block";
-            document.getElementById("overlay").style.display = "block";
-        }
-
-        // Hide login popup
-        function hideLogin() {
-            document.getElementById("login-popup").style.display = "none";
-            document.getElementById("overlay").style.display = "none";
-        }
-
-        // Show sign-up popup
-        function showSignUp() {
-            document.getElementById("signup-popup").style.display = "block";
-            document.getElementById("overlay").style.display = "block";
-        }
-
-        // Hide sign-up popup
-        function hideSignUp() {
-            document.getElementById("signup-popup").style.display = "none";
-            document.getElementById("overlay").style.display = "none";
-        }
-
-        // Firebase login
+        // Login Function
         function login(event) {
             event.preventDefault();
-            const email = document.getElementById("email").value;
-            const password = document.getElementById("password").value;
-            auth.signInWithEmailAndPassword(email, password).then(cred => {
-                updateLeaderboard();
-                updateChanceOfWinning();
-                hideLogin();
-                alert("Login successful!");
-            }).catch(err => {
-                alert(err.message);
-            });
-        }
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
 
-        // Firebase sign-up
-        function signUp(event) {
-            event.preventDefault();
-            const email = document.getElementById("signup-email").value;
-            const password = document.getElementById("signup-password").value;
-            auth.createUserWithEmailAndPassword(email, password).then(cred => {
-                db.collection("users").doc(cred.user.uid).set({
-                    email: email,
-                    clicks: 0,
-                    joinDate: new Date().toLocaleDateString()
-                }).then(() => {
-                    hideSignUp();
-                    alert("Sign-up successful!");
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    currentUser = userCredential.user;
                     updateLeaderboard();
+                    document.getElementById('click-message').style.display = 'none';
+                    document.getElementById('logout-btn').style.display = 'inline-block';
+                    document.getElementById('click-btn').disabled = false; // Enable the click button
+                    hideLogin();
+                    document.getElementById('user-email').innerText = currentUser.email;
+                })
+                .catch((error) => {
+                    alert("Login failed: " + error.message);
                 });
-            }).catch(err => {
-                alert(err.message);
-            });
         }
 
-        // Handle logout
+        // Logout Function
         function logout() {
             auth.signOut().then(() => {
-                document.getElementById("click-count").textContent = 0;
-                document.getElementById("chance-of-winning").textContent = "Chance of Winning: 0%";
-                document.getElementById("user-email").textContent = "Not Logged In";
-                updateLeaderboard();
+                currentUser = null;
+                document.getElementById('click-btn').disabled = true; // Disable the click button
+                document.getElementById('logout-btn').style.display = 'none';
+                document.getElementById('click-message').style.display = 'block';
+                document.getElementById('user-email').innerText = 'Not Logged In';
+            }).catch((error) => {
+                alert("Error signing out: " + error.message);
             });
         }
 
-        // Increment clicks in the Firebase database
+        // Show Login Modal
+        function showLogin() {
+            document.getElementById('login-popup').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        // Hide Login Modal
+        function hideLogin() {
+            document.getElementById('login-popup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        // Sign Up Modal (similar to login)
+        function signUp(event) {
+            event.preventDefault();
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    currentUser = userCredential.user;
+                    updateLeaderboard();
+                    hideSignUp();
+                    showWelcomePopup();
+                })
+                .catch((error) => {
+                    alert("Sign Up failed: " + error.message);
+                });
+        }
+
+        // Show Sign Up Modal
+        function showSignUp() {
+            document.getElementById('signup-popup').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        // Hide Sign Up Modal
+        function hideSignUp() {
+            document.getElementById('signup-popup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        // Popup welcome message
+        function showWelcomePopup() {
+            document.getElementById('welcome-popup').style.display = 'block';
+        }
+
+        function closeWelcomePopup() {
+            document.getElementById('welcome-popup').style.display = 'none';
+        }
+
+        // Increment Clicks
         function incrementClicks() {
-            const user = auth.currentUser;
-            if (user) {
-                const userRef = db.collection("users").doc(user.uid);
+            if (currentUser) {
+                const userRef = db.collection("users").doc(currentUser.uid);
                 userRef.update({
                     clicks: firebase.firestore.FieldValue.increment(1)
                 }).then(() => {
-                    document.getElementById("click-count").textContent = parseInt(document.getElementById("click-count").textContent) + 1;
                     updateLeaderboard();
-                    updateChanceOfWinning();
+                    document.getElementById('click-count').innerText = parseInt(document.getElementById('click-count').innerText) + 1;
+                }).catch(err => {
+                    console.error("Error updating clicks: ", err);
                 });
-            } else {
-                document.getElementById("click-message").style.display = "block"; // Show sign-in message
-                document.getElementById("chance-of-winning").textContent = "Chance of Winning: 0%";
             }
         }
 
-        // Real-time updates with Firebase Auth
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                document.getElementById("user-email").textContent = user.email;
-                document.getElementById("click-btn").style.display = "block";
-                document.getElementById("logout-btn").style.display = "block";
-                document.getElementById("login-btn").style.display = "none";
-                document.getElementById("signup-btn").style.display = "none";
-                document.getElementById("click-message").style.display = "none"; // Hide sign-in message
-                updateLeaderboard();
-                updateChanceOfWinning();
-            } else {
-                document.getElementById("click-btn").style.display = "block";
-                document.getElementById("logout-btn").style.display = "none";
-                document.getElementById("login-btn").style.display = "block";
-                document.getElementById("signup-btn").style.display = "block";
-                document.getElementById("click-message").style.display = "block"; // Show sign-in message
-                document.getElementById("chance-of-winning").textContent = "Chance of Winning: 0%"; // Set chance to 0
-            }
+        // Handle the overlay click event to close the modals
+        document.getElementById('overlay').addEventListener('click', function() {
+            hideLogin();
+            hideSignUp();
         });
 
-        // Add stars to space background
-        function createStars() {
-            const spaceBackground = document.getElementById("space-background");
-            for (let i = 0; i < 100; i++) {
-                let star = document.createElement("div");
-                star.classList.add("star");
-                const size = Math.random() * 3 + 1;
-                star.style.width = `${size}px`;
-                star.style.height = `${size}px`;
-                star.style.left = `${Math.random() * 100}%`;
-                star.style.top = `${Math.random() * 100}%`;
-                spaceBackground.appendChild(star);
-            }
-        }
-
-        // Create stars on page load
-        createStars();
+        // Initialize game and leaderboard
+        updateLeaderboard();
     </script>
 </body>
 </html>
