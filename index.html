@@ -5,17 +5,61 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Click4Cash</title>
     <style>
+        /* Basic CSS */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
-            height: 100vh;
-            background-color: #f0f0f0;
+            background-color: #f7f7f7;
             color: #333;
-            overflow: hidden;
+        }
+        nav {
+            width: 100%;
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin-left: 15px;
+        }
+        nav a:hover {
+            text-decoration: underline;
+        }
+        .auth-form {
+            width: 300px;
+            background-color: white;
+            padding: 20px;
+            margin-top: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .auth-form input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .auth-form button {
+            width: 100%;
+            padding: 10px;
+            background-color: #28a745;
+            border: none;
+            color: white;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .auth-form button:hover {
+            background-color: #218838;
         }
         #click-btn {
             font-size: 24px;
@@ -26,23 +70,59 @@
             color: white;
             cursor: pointer;
             transition: background-color 0.3s;
+            margin-top: 20px;
         }
         #click-btn:hover {
             background-color: #218838;
+        }
+        .welcome {
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
 
-    <button id="click-btn">Click Me!</button>
+    <!-- Navbar -->
+    <nav>
+        <div><strong>Click4Cash</strong></div>
+        <div>
+            <a href="#" id="login-btn">Login</a>
+            <a href="#" id="signup-btn">Sign Up</a>
+            <a href="#" id="logout-btn" style="display:none;">Logout</a>
+        </div>
+    </nav>
 
-    <!-- Firebase App (You must include the Firebase SDK scripts here) -->
-    <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-firestore.js"></script>
-    
-    <script>
-        // Firebase Configuration - replace the following with your actual API keys
+    <!-- Login Form -->
+    <div id="login-form" class="auth-form" style="display:none;">
+        <h3>Login</h3>
+        <input type="email" id="login-email" placeholder="Email" required />
+        <input type="password" id="login-password" placeholder="Password" required />
+        <button id="login-submit">Login</button>
+    </div>
+
+    <!-- Sign Up Form -->
+    <div id="signup-form" class="auth-form" style="display:none;">
+        <h3>Sign Up</h3>
+        <input type="email" id="signup-email" placeholder="Email" required />
+        <input type="password" id="signup-password" placeholder="Password" required />
+        <button id="signup-submit">Sign Up</button>
+    </div>
+
+    <!-- Welcome Message -->
+    <div id="welcome-msg" class="welcome" style="display:none;">
+        <p>Welcome, <span id="user-email"></span>!</p>
+    </div>
+
+    <!-- Click Button -->
+    <button id="click-btn" style="display:none;">Click Me!</button>
+
+    <!-- Firebase App (CDN with module support) -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.14.0/firebase-app.js';
+        import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.14.0/firebase-firestore.js';
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.14.0/firebase-auth.js';
+
+        // Firebase Configuration (replace with your API keys)
         const firebaseConfig = {
             apiKey: "AIzaSyCQeZ1EOPbHOy8_wOBBvlchZwj8tTCZM2w",
             authDomain: "click4cash-7e106.firebaseapp.com",
@@ -54,27 +134,87 @@
         };
 
         // Initialize Firebase
-        const app = firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
 
-        // Button click functionality
+        // Show login/signup or click button based on authentication state
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                document.getElementById('welcome-msg').style.display = 'block';
+                document.getElementById('user-email').textContent = user.email;
+                document.getElementById('click-btn').style.display = 'inline-block';
+                document.getElementById('login-form').style.display = 'none';
+                document.getElementById('signup-form').style.display = 'none';
+                document.getElementById('login-btn').style.display = 'none';
+                document.getElementById('signup-btn').style.display = 'none';
+                document.getElementById('logout-btn').style.display = 'inline-block';
+            } else {
+                document.getElementById('login-btn').style.display = 'inline-block';
+                document.getElementById('signup-btn').style.display = 'inline-block';
+                document.getElementById('logout-btn').style.display = 'none';
+                document.getElementById('click-btn').style.display = 'none';
+                document.getElementById('welcome-msg').style.display = 'none';
+            }
+        });
+
+        // Login functionality
+        document.getElementById('login-btn').addEventListener('click', () => {
+            document.getElementById('login-form').style.display = 'block';
+            document.getElementById('signup-form').style.display = 'none';
+        });
+
+        document.getElementById('signup-btn').addEventListener('click', () => {
+            document.getElementById('signup-form').style.display = 'block';
+            document.getElementById('login-form').style.display = 'none';
+        });
+
+        document.getElementById('login-submit').addEventListener('click', async () => {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                console.error(error.message);
+            }
+        });
+
+        // Sign Up functionality
+        document.getElementById('signup-submit').addEventListener('click', async () => {
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+
+            try {
+                await createUserWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                console.error(error.message);
+            }
+        });
+
+        // Logout functionality
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            signOut(auth);
+        });
+
+        // Click tracking functionality
         const button = document.getElementById('click-btn');
         let clickCount = 0;
 
-        button.addEventListener('click', () => {
+        button.addEventListener('click', async () => {
             clickCount++;
             console.log(`Button clicked ${clickCount} times`);
 
-            // Save the click count to Firestore (or use as needed)
-            db.collection('clicks').add({
-                count: clickCount,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => {
+            try {
+                // Save the click count to Firestore
+                await addDoc(collection(db, 'clicks'), {
+                    count: clickCount,
+                    timestamp: serverTimestamp()
+                });
                 console.log("Click count saved!");
-            }).catch((error) => {
+            } catch (error) {
                 console.error("Error saving click count: ", error);
-            });
+            }
         });
     </script>
 
