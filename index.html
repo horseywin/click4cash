@@ -7,9 +7,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <link rel="icon" href="favicon.ico" type="image/x-icon"> <!-- Favicon added -->
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
     <style>
-        /* Basic reset and space theme */
         * {
             margin: 0;
             padding: 0;
@@ -141,7 +140,6 @@
         .leaderboard-item:hover {
             background: #666;
         }
-        /* Animations */
         @keyframes slideUp {
             0% { transform: translateY(30px); opacity: 0; }
             100% { transform: translateY(0); opacity: 1; }
@@ -150,7 +148,6 @@
             0% { opacity: 0; }
             100% { opacity: 1; }
         }
-        /* Space animation */
         .space-background {
             position: absolute;
             top: 0;
@@ -174,7 +171,6 @@
                 transform: translateY(100%);
             }
         }
-        /* Email and password input styling */
         input[type="email"], input[type="password"] {
             width: 100%;
             padding: 12px;
@@ -220,7 +216,6 @@
         </div>
     </div>
 
-    <!-- Login Popup -->
     <div id="overlay"></div>
     <div id="login-popup">
         <h2>Sign In</h2>
@@ -232,7 +227,6 @@
         <button onclick="hideLogin()">Cancel</button>
     </div>
 
-    <!-- Sign Up Popup -->
     <div id="signup-popup">
         <h2>Sign Up</h2>
         <form onsubmit="signUp(event)">
@@ -263,6 +257,28 @@
             clickCount += 1;
             document.getElementById("click-count").innerText = clickCount;
         }
+
+        function showLogin() {
+            document.getElementById("login-popup").style.display = "block";
+            document.getElementById("overlay").style.display = "block";
+        }
+
+        function hideLogin() {
+            document.getElementById("login-popup").style.display = "none";
+            document.getElementById("overlay").style.display = "none";
+        }
+
+        function showSignUp() {
+            document.getElementById("signup-popup").style.display = "block";
+            document.getElementById("overlay").style.display = "block";
+        }
+
+        function hideSignUp() {
+            document.getElementById("signup-popup").style.display = "none";
+            document.getElementById("overlay").style.display = "none";
+        }
+
+        // Add Firebase Authentication functions (login, sign-up, logout) here
     </script>
 </body>
 </html>
