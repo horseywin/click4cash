@@ -1,392 +1,120 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Click4Cash - Space Edition</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <style>
-        /* Basic reset and space theme */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Arial', sans-serif;
-        }
-        body {
-            background: #000;
-            color: #fff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            flex-direction: column;
-            gap: 30px;
-            position: relative;
-            overflow-y: scroll;
-        }
-        #top-bar {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            z-index: 10;
-        }
-        button {
-            background: #222;
-            color: #fff;
-            border: none;
-            padding: 15px 25px;
-            cursor: pointer;
-            transition: 0.4s ease;
-            font-size: 18px;
-            border-radius: 8px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
-        }
-        button:hover {
-            background: #444;
-            transform: translateY(-3px);
-        }
-        h1 {
-            font-size: 48px;
-            font-weight: bold;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
-        }
-        #click-btn {
-            background: linear-gradient(45deg, #0084ff, #ff1a75);
-            font-size: 30px;
-            padding: 50px 100px;
-            border-radius: 50px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
-            transform: scale(1);
-            transition: transform 0.3s, background 0.4s ease;
-        }
-        #click-btn:hover {
-            transform: scale(1.1);
-            background: linear-gradient(45deg, #00d4ff, #ff69b3);
-        }
-        #click-btn:active {
-            transform: scale(1);
-            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.3);
-        }
-        .container {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-top: 60px;
-        }
-        .card {
-            background: rgba(50, 50, 50, 0.8);
-            padding: 20px;
-            border-radius: 12px;
-            width: 300px;
-            text-align: center;
-            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
-            transform: translateY(-30px);
-            opacity: 0;
-            animation: slideUp 0.5s ease-in-out forwards;
-        }
-        .card h3 {
-            font-size: 22px;
-            margin-bottom: 15px;
-            text-transform: uppercase;
-        }
-        .card p {
-            font-size: 16px;
-            margin-bottom: 10px;
-            color: #ccc;
-        }
-        .leaderboard-item {
-            padding: 15px;
-            border-radius: 8px;
-            background: #444;
-            margin-bottom: 15px;
-            text-align: left;
-            font-size: 16px;
-            transition: background 0.3s;
-        }
-        .leaderboard-item:hover {
-            background: #666;
-        }
-        /* Animations */
-        @keyframes slideUp {
-            0% { transform: translateY(30px); opacity: 0; }
-            100% { transform: translateY(0); opacity: 1; }
-        }
-        /* Space animation */
-        .space-background {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-        }
-        .star {
-            position: absolute;
-            background-color: white;
-            border-radius: 50%;
-            opacity: 0.6;
-            animation: moveStars 20s linear infinite;
-        }
-        @keyframes moveStars {
-            0% {
-                transform: translateY(0);
-            }
-            100% {
-                transform: translateY(100%);
-            }
-        }
+// Initialize Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyCQeZ1EOPbHOy8_wOBBvlchZwj8tTCZM2w",
+    authDomain: "click4cash-7e106.firebaseapp.com",
+    projectId: "click4cash-7e106",
+    storageBucket: "click4cash-7e106.appspot.com",
+    messagingSenderId: "689145020485",
+    appId: "1:689145020485:web:458d083ec5bca7d8b3e32c"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
 
-        /* Hide popups by default */
-        #login-popup, #signup-popup, #welcome-popup {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #333;
-            padding: 20px;
-            border-radius: 10px;
-            z-index: 10;
-            color: #fff;
-            text-align: center;
-        }
+let currentUser = null;
 
-        #login-popup button, #signup-popup button, #welcome-popup button {
-            margin-top: 10px;
-        }
-
-        /* Overlay style */
-        #overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 5;
-            display: none;
-        }
-    </style>
-</head>
-<body>
-    <div id="top-bar">
-        <button id="login-btn" onclick="showLogin()">Login</button>
-        <button id="signup-btn" onclick="showSignUp()">Sign Up</button>
-        <button onclick="logout()" id="logout-btn" style="display: none;">Logout</button>
-    </div>
-
-    <h1>Click4Cash - Space Edition</h1>
-    <button id="click-btn" onclick="incrementClicks()">Click Me!</button>
-    <p id="click-message" style="color: red; display: none;">Please sign in to start clicking!</p>
-
-    <div class="container">
-        <div class="card">
-            <h3>Your Clicks</h3>
-            <p id="click-count">0</p>
-        </div>
-        <div class="card">
-            <h3>Leaderboard</h3>
-            <div id="leaderboard"></div>
-            <button onclick="showFullLeaderboard()">See All</button>
-        </div>
-        <div class="card">
-            <h3>Your Profile</h3>
-            <p id="user-email">Not Logged In</p>
-            <p id="join-date"></p>
-            <p id="playtime"></p>
-            <p id="chance-of-winning">Chance of Winning: 0%</p>
-        </div>
-    </div>
-
-    <!-- Welcome Popup -->
-    <div id="welcome-popup">
-        <h2>Welcome to Click4Cash!</h2>
-        <p>Thank you for signing up. You will earn 100% of the ad revenue if you win!</p>
-        <button onclick="closeWelcomePopup()">Got It!</button>
-    </div>
-
-    <!-- Login Popup -->
-    <div id="overlay"></div>
-    <div id="login-popup">
-        <h2>Sign In</h2>
-        <form onsubmit="login(event)">
-            <input type="email" id="email" placeholder="Email" required><br>
-            <input type="password" id="password" placeholder="Password" required><br>
-            <button type="submit">Login</button>
-        </form>
-        <button onclick="hideLogin()">Cancel</button>
-    </div>
-
-    <!-- Sign Up Popup -->
-    <div id="signup-popup">
-        <h2>Sign Up</h2>
-        <form onsubmit="signUp(event)">
-            <input type="email" id="signup-email" placeholder="Email" required><br>
-            <input type="password" id="signup-password" placeholder="Password" required><br>
-            <p><small>By signing up, you agree to receive an email confirmation if you win!</small></p>
-            <button type="submit">Sign Up</button>
-        </form>
-        <button onclick="hideSignUp()">Cancel</button>
-    </div>
-
-    <div class="space-background" id="space-background"></div>
-
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyCQeZ1EOPbHOy8_wOBBvlchZwj8tTCZM2w",
-            authDomain: "click4cash-7e106.firebaseapp.com",
-            projectId: "click4cash-7e106",
-            storageBucket: "click4cash-7e106.appspot.com",
-            messagingSenderId: "689145020485",
-            appId: "1:689145020485:web:458d083ec5bca7d8b3e32c"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-
-        let currentUser = null;
-
-        // Fetch leaderboard data and update
-        function updateLeaderboard() {
-            db.collection("users").orderBy("clicks", "desc").get()
-                .then((snapshot) => {
-                    let leaderboardHTML = '';
-                    snapshot.forEach(doc => {
-                        const userData = doc.data();
-                        if (userData.clicks !== undefined) {
-                            leaderboardHTML += `<div class="leaderboard-item">${userData.email}: ${userData.clicks} clicks</div>`;
-                        }
-                    });
-                    document.getElementById("leaderboard").innerHTML = leaderboardHTML;
-                });
-        }
-
-        function showLogin() {
-            document.getElementById("overlay").style.display = "block";
-            document.getElementById("login-popup").style.display = "block";
-        }
-
-        function hideLogin() {
-            document.getElementById("overlay").style.display = "none";
-            document.getElementById("login-popup").style.display = "none";
-        }
-
-        function login(event) {
-            event.preventDefault();
-            const email = document.getElementById("email").value;
-            const password = document.getElementById("password").value;
-            auth.signInWithEmailAndPassword(email, password)
-                .then((userCredential) => {
-                    currentUser = userCredential.user;
-                    document.getElementById("login-btn").style.display = "none";
-                    document.getElementById("signup-btn").style.display = "none";
-                    document.getElementById("logout-btn").style.display = "inline-block";
-                    document.getElementById("click-message").style.display = "none";
-                    updateLeaderboard();
-                    loadUserData();
-                    hideLogin();
-                })
-                .catch((error) => {
-                    alert(error.message);
-                });
-        }
-
-        function showSignUp() {
-            document.getElementById("overlay").style.display = "block";
-            document.getElementById("signup-popup").style.display = "block";
-        }
-
-        function hideSignUp() {
-            document.getElementById("overlay").style.display = "none";
-            document.getElementById("signup-popup").style.display = "none";
-        }
-
-        function signUp(event) {
-            event.preventDefault();
-            const email = document.getElementById("signup-email").value;
-            const password = document.getElementById("signup-password").value;
-            auth.createUserWithEmailAndPassword(email, password)
-                .then((userCredential) => {
-                    currentUser = userCredential.user;
-                    db.collection("users").doc(currentUser.uid).set({
-                        email: currentUser.email,
-                        clicks: 0,
-                        joinDate: new Date(),
-                        playtime: 0
-                    }).then(() => {
-                        showWelcomePopup();
-                    });
-                    document.getElementById("login-btn").style.display = "none";
-                    document.getElementById("signup-btn").style.display = "none";
-                    document.getElementById("logout-btn").style.display = "inline-block";
-                    hideSignUp();
-                    updateLeaderboard();
-                    loadUserData();
-                })
-                .catch((error) => {
-                    alert(error.message);
-                });
-        }
-
-        function showWelcomePopup() {
-            document.getElementById("welcome-popup").style.display = "block";
-            document.getElementById("overlay").style.display = "block";
-        }
-
-        function closeWelcomePopup() {
-            document.getElementById("welcome-popup").style.display = "none";
-            document.getElementById("overlay").style.display = "none";
-        }
-
-        function logout() {
-            auth.signOut().then(() => {
-                currentUser = null;
-                document.getElementById("login-btn").style.display = "inline-block";
-                document.getElementById("signup-btn").style.display = "inline-block";
-                document.getElementById("logout-btn").style.display = "none";
-                document.getElementById("click-message").style.display = "inline-block";
-                updateLeaderboard();
-                loadUserData();
-            });
-        }
-
-        function incrementClicks() {
-            if (!currentUser) {
-                document.getElementById("click-message").style.display = "inline-block";
-                return;
-            }
-            const userRef = db.collection("users").doc(currentUser.uid);
-            userRef.update({
-                clicks: firebase.firestore.FieldValue.increment(1),
-                playtime: firebase.firestore.FieldValue.increment(1)
-            }).then(() => {
-                loadUserData();
-                updateLeaderboard();
-            });
-        }
-
-        function loadUserData() {
-            if (!currentUser) return;
-            const userRef = db.collection("users").doc(currentUser.uid);
-            userRef.get().then((doc) => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    document.getElementById("click-count").textContent = data.clicks || 0;
-                    document.getElementById("user-email").textContent = data.email;
-                    document.getElementById("join-date").textContent = `Joined: ${data.joinDate.toDate()}`;
-                    document.getElementById("playtime").textContent = `Playtime: ${data.playtime || 0} mins`;
-                    document.getElementById("chance-of-winning").textContent = `Chance of Winning: ${calculateWinningChance(data.clicks)}%`;
+// Fetch leaderboard data and update
+function updateLeaderboard() {
+    db.collection("users").orderBy("clicks", "desc").get()
+        .then((snapshot) => {
+            let leaderboardHTML = '';
+            snapshot.forEach(doc => {
+                const userData = doc.data();
+                if (userData.clicks !== undefined) {
+                    leaderboardHTML += `<div class="leaderboard-item">${userData.email} - ${userData.clicks} clicks</div>`;
                 }
             });
-        }
+            document.getElementById('leaderboard').innerHTML = leaderboardHTML;
+        })
+        .catch(err => {
+            console.error("Error fetching leaderboard: ", err);
+        });
+}
 
-        function calculateWinningChance(clicks) {
-            return Math.min((clicks / 1000) * 100, 100); // 1000 clicks for 100% chance
+// Login Function
+function login(event) {
+    event.preventDefault();
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+
+    auth.signInWithEmailAndPassword(email, password)
+        .then((userCredential) => {
+            currentUser = userCredential.user;
+            updateLeaderboard();
+            document.getElementById('click-message').style.display = 'none';
+            document.getElementById('logout-btn').style.display = 'inline-block';
+            document.getElementById('click-btn').disabled = false; // Enable the click button
+            hideLogin();
+            document.getElementById('user-email').innerText = currentUser.email;
+
+            // Initialize click count for the user
+            initializeUserClicks();
+        })
+        .catch((error) => {
+            alert("Login failed: " + error.message);
+        });
+}
+
+// Initialize user clicks in Firestore
+function initializeUserClicks() {
+    const userRef = db.collection("users").doc(currentUser.uid);
+    userRef.get().then((doc) => {
+        if (!doc.exists) {
+            // If the user doesn't exist in Firestore, create a new document
+            userRef.set({
+                email: currentUser.email,
+                clicks: 0
+            }).then(() => {
+                document.getElementById('click-count').innerText = 0;
+            });
+        } else {
+            // If the user exists, update the click count display
+            document.getElementById('click-count').innerText = doc.data().clicks || 0;
         }
-    </script>
-</body>
-</html>
+    }).catch((error) => {
+        console.error("Error initializing user clicks: ", error);
+    });
+}
+
+// Increment Clicks
+function incrementClicks() {
+    if (currentUser) {
+        const userRef = db.collection("users").doc(currentUser.uid);
+        userRef.update({
+            clicks: firebase.firestore.FieldValue.increment(1)
+        }).then(() => {
+            // Update the click count display
+            userRef.get().then((doc) => {
+                if (doc.exists) {
+                    document.getElementById('click-count').innerText = doc.data().clicks;
+                }
+            });
+            updateLeaderboard();
+        }).catch(err => {
+            console.error("Error updating clicks: ", err);
+        });
+    } else {
+        alert("Please sign in to start clicking!");
+    }
+}
+
+// Sign Up Function
+function signUp(event) {
+    event.preventDefault();
+    const email = document.getElementById('signup-email').value;
+    const password = document.getElementById('signup-password').value;
+
+    auth.createUserWithEmailAndPassword(email, password)
+        .then((userCredential) => {
+            currentUser = userCredential.user;
+            updateLeaderboard();
+            hideSignUp();
+            showWelcomePopup();
+
+            // Initialize click count for the new user
+            initializeUserClicks();
+        })
+        .catch((error) => {
+            alert("Sign Up failed: " + error.message);
+        });
+}
