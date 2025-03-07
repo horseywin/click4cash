@@ -3,25 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Click Competition</title>
+    <title>Click4Cash</title>
     <style>
+        /* Background & General Styling */
         body {
             font-family: Arial, sans-serif;
             text-align: center;
-            margin: 50px;
+            margin: 0;
+            padding: 0;
+            background: radial-gradient(circle, #1e3c72, #2a5298);
+            color: white;
+            overflow: hidden;
         }
 
-        button {
-            font-size: 20px;
-            padding: 10px;
+        /* Centering Content */
+        .container {
+            position: relative;
+            z-index: 2;
+            margin-top: 15vh;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 10px rgba(255, 255, 255, 0.5);
+        }
+
+        p {
+            font-size: 1.5rem;
+            margin: 20px 0;
+        }
+
+        /* Button Styling */
+        #clickButton {
+            font-size: 2rem;
+            padding: 15px 30px;
+            background: linear-gradient(45deg, #ff416c, #ff4b2b);
+            border: none;
+            color: white;
+            border-radius: 50px;
             cursor: pointer;
+            transition: transform 0.1s ease, box-shadow 0.2s ease;
+            box-shadow: 0px 5px 15px rgba(255, 75, 43, 0.5);
+        }
+
+        #clickButton:active {
+            transform: scale(0.9);
+            box-shadow: 0px 2px 5px rgba(255, 75, 43, 0.5);
+        }
+
+        /* Particle Background */
+        #particles-js {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 1;
         }
     </style>
 </head>
 <body>
-    <h1>Click as Fast as You Can!</h1>
-    <p>Clicks: <span id="clickCount">0</span></p>
-    <button id="clickButton">Click Me!</button>
+    <!-- Particle Background -->
+    <div id="particles-js"></div>
+
+    <!-- Main Content -->
+    <div class="container">
+        <h1>Click as Fast as You Can!</h1>
+        <p>Clicks: <span id="clickCount">0</span></p>
+        <button id="clickButton">Click Me!</button>
+    </div>
 
     <script>
         let count = 0;
@@ -31,6 +81,26 @@
         clickButton.addEventListener("click", () => {
             count++;
             clickCount.textContent = count;
+        });
+    </script>
+
+    <!-- Particles.js Library -->
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script>
+        particlesJS("particles-js", {
+            particles: {
+                number: { value: 80, density: { enable: true, value_area: 800 } },
+                color: { value: "#ffffff" },
+                shape: { type: "circle" },
+                opacity: { value: 0.5, random: false },
+                size: { value: 3, random: true },
+                move: { enable: true, speed: 2 }
+            },
+            interactivity: {
+                detect_on: "canvas",
+                events: { onhover: { enable: true, mode: "repulse" } },
+                modes: { repulse: { distance: 100, duration: 0.4 } }
+            }
         });
     </script>
 </body>
