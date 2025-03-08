@@ -61,6 +61,8 @@
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
             transform: scale(1);
             transition: transform 0.3s, background 0.4s ease;
+            position: relative;
+            z-index: 2;
         }
         #click-btn:hover {
             transform: scale(1.1);
@@ -115,7 +117,7 @@
             0% { transform: translateY(30px); opacity: 0; }
             100% { transform: translateY(0); opacity: 1; }
         }
-        /* Space animation */
+        /* Space background and stars */
         .space-background {
             position: absolute;
             top: 0;
@@ -123,6 +125,7 @@
             width: 100%;
             height: 100%;
             z-index: -1;
+            overflow: hidden;
         }
         .star {
             position: absolute;
@@ -132,14 +135,22 @@
             animation: moveStars 20s linear infinite;
         }
         @keyframes moveStars {
-            0% {
-                transform: translateY(0);
-            }
-            100% {
-                transform: translateY(100%);
-            }
+            0% { transform: translateY(-100vh); }
+            100% { transform: translateY(100vh); }
         }
-
+        /* Particle effects */
+        .particle {
+            position: absolute;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0));
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particleFade 1s ease-out forwards;
+            z-index: 1;
+        }
+        @keyframes particleFade {
+            0% { opacity: 1; transform: scale(0.1); }
+            100% { opacity: 0; transform: scale(1.5); }
+        }
         /* Popup styles */
         #login-popup, #signup-popup, #welcome-popup, #leaderboard-popup, #rules-popup {
             display: none;
@@ -157,12 +168,10 @@
             width: 90%;
             max-width: 400px;
         }
-
         #login-popup h2, #signup-popup h2, #welcome-popup h2, #leaderboard-popup h2, #rules-popup h2 {
             margin-bottom: 20px;
             font-size: 24px;
         }
-
         #login-popup input, #signup-popup input {
             width: 100%;
             padding: 10px;
@@ -173,7 +182,6 @@
             color: #fff;
             font-size: 16px;
         }
-
         #login-popup button, #signup-popup button, #welcome-popup button, #leaderboard-popup button, #rules-popup button {
             background: #0084ff;
             color: #fff;
@@ -185,25 +193,20 @@
             margin-top: 10px;
             transition: background 0.3s ease;
         }
-
         #login-popup button:hover, #signup-popup button:hover, #welcome-popup button:hover, #leaderboard-popup button:hover, #rules-popup button:hover {
             background: #00d4ff;
         }
-
         #login-popup button[type="submit"], #signup-popup button[type="submit"] {
             background: #ff1a75;
         }
-
         #login-popup button[type="submit"]:hover, #signup-popup button[type="submit"]:hover {
             background: #ff69b3;
         }
-
         #welcome-popup p, #rules-popup p {
             margin-bottom: 20px;
             font-size: 18px;
             color: #ccc;
         }
-
         /* Overlay style */
         #overlay {
             position: absolute;
@@ -309,14 +312,60 @@
 
         let currentUser = null;
         let totalClicks = 0;
-        let localClicks = 0; // Local counter for immediate UI updates
-        let clickBuffer = 0; // Buffer for clicks to sync with Firebase
-        let syncTimeout = null; // Timeout for batch syncing
+        let localClicks = 0;
+        let clickBuffer = 0;
+        let syncTimeout = null;
+        let baseStarSpeed = 20; // Base speed in seconds for star animation
+        let clickSpeedBoost = false;
 
         // Show rules popup on first visit
         if (!localStorage.getItem('visited')) {
             showRulesPopup();
             localStorage.setItem('visited', 'true');
+        }
+
+        // Initialize space background with stars
+        function initSpaceBackground() {
+            const spaceBackground = document.getElementById('space-background');
+            const starCount = 100; // Number of stars
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.classList.add('star');
+                star.style.width = `${Math.random() * 3 + 1}px`;
+                star.style.height = star.style.width;
+                star.style.left = `${Math.random() * 100}%`;
+                star.style.top = `${Math.random() * -100}vh`; // Start above the screen
+                star.style.animationDuration = `${baseStarSpeed + Math.random() * 10}s`; // Randomize speed slightly
+                spaceBackground.appendChild(star);
+            }
+        }
+
+        // Update star speed dynamically
+        function updateStarSpeed(faster = false) {
+            const stars = document.querySelectorAll('.star');
+            const newSpeed = faster ? baseStarSpeed / 2 : baseStarSpeed; // Halve duration when clicking
+            stars.forEach(star => {
+                star.style.animationDuration = `${newSpeed + Math.random() * 5}s`;
+            });
+        }
+
+        // Create click particles
+        function createParticles(x, y) {
+            const clickBtn = document.getElementById('click-btn');
+            for (let i = 0; i < 10; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                const size = Math.random() * 20 + 10;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.left = `${x - size / 2}px`;
+                particle.style.top = `${y - size / 2}px`;
+                const angle = Math.random() * 2 * Math.PI;
+                const velocity = Math.random() * 100 + 50;
+                particle.style.transform = `translate(${Math.cos(angle) * velocity}px, ${Math.sin(angle) * velocity}px)`;
+                document.body.appendChild(particle);
+                setTimeout(() => particle.remove(), 1000); // Remove after animation
+            }
         }
 
         // Fetch leaderboard data and update
@@ -462,13 +511,12 @@
                 .then((userCredential) => {
                     currentUser = userCredential.user;
 
-                    // Create a new user document in Firestore
                     const userRef = db.collection("users").doc(currentUser.uid);
                     userRef.set({
                         email: currentUser.email,
-                        clicks: 0, // Initialize clicks to 0
-                        joinDate: new Date().toISOString(), // Add join date
-                        playtime: 0 // Initialize playtime to 0
+                        clicks: 0,
+                        joinDate: new Date().toISOString(),
+                        playtime: 0
                     }).then(() => {
                         updateLeaderboard();
                         hideSignUp();
@@ -528,7 +576,7 @@
                 userRef.update({
                     clicks: firebase.firestore.FieldValue.increment(clickBuffer)
                 }).then(() => {
-                    clickBuffer = 0; // Reset buffer after successful sync
+                    clickBuffer = 0;
                     updateLeaderboard();
                 }).catch(err => {
                     console.error("Error syncing clicks: ", err);
@@ -536,8 +584,8 @@
             }
         }
 
-        // Increment clicks with local caching and debounced sync
-        function incrementClicks() {
+        // Increment clicks with effects
+        function incrementClicks(event) {
             if (!currentUser) {
                 document.getElementById('click-message').style.display = 'block';
                 return;
@@ -548,12 +596,28 @@
             clickBuffer += 1;
             document.getElementById('click-count').innerText = localClicks;
 
-            // Debounce the sync to Firebase (every 500ms)
+            // Trigger particle effect
+            const rect = document.getElementById('click-btn').getBoundingClientRect();
+            const x = rect.left + rect.width / 2;
+            const y = rect.top + rect.height / 2;
+            createParticles(x, y);
+
+            // Speed up stars temporarily
+            if (!clickSpeedBoost) {
+                clickSpeedBoost = true;
+                updateStarSpeed(true);
+                setTimeout(() => {
+                    clickSpeedBoost = false;
+                    updateStarSpeed(false);
+                }, 2000); // Slow down after 2 seconds
+            }
+
+            // Debounce sync to Firebase
             if (syncTimeout) clearTimeout(syncTimeout);
             syncTimeout = setTimeout(syncClicks, 500);
         }
 
-        // Initialize game and leaderboard
+        // Initialize game
         auth.onAuthStateChanged((user) => {
             if (user) {
                 currentUser = user;
@@ -577,6 +641,8 @@
             }
         });
 
+        // Start the game
+        initSpaceBackground();
         updateLeaderboard();
     </script>
 </body>
