@@ -20,11 +20,13 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app-check.js"></script>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6598513151197899" crossorigin="anonymous"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Oxanium:wght@400;700&display=swap');
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Arial', sans-serif;
+            font-family: 'Oxanium', sans-serif;
+            font-weight: 700;
             cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M2 2l14 14-4 4-6-6-4-4z" fill="%23000"/><path d="M2 2l14 14-4 4-6-6-4-4z" stroke="%23fff" stroke-width="2" fill="none"/></svg>') 2 2, auto;
         }
         body {
@@ -38,8 +40,6 @@
             gap: 30px;
             position: relative;
             overflow-y: scroll;
-            background-image: radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
-            background-size: 20px 20px;
         }
         #top-bar {
             position: absolute;
@@ -48,46 +48,38 @@
             z-index: 10;
         }
         button {
-            background: #1a1a3d;
+            background: #222;
             color: #fff;
-            border: 1px solid #00d4ff;
+            border: 1px solid #999999;
             padding: 15px 25px;
             cursor: pointer;
-            transition: 0.4s ease;
+            transition: background 0.3s ease;
             font-size: 18px;
             border-radius: 8px;
-            box-shadow: 0 5px 15px rgba(0, 212, 255, 0.3);
+            text-transform: uppercase;
         }
         button:hover {
-            background: #2a2a5d;
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0, 212, 255, 0.5);
+            background: #333;
         }
         h1 {
             font-size: 48px;
-            font-weight: bold;
-            text-shadow: 0 0 10px rgba(0, 212, 255, 0.7), 0 0 20px rgba(255, 105, 180, 0.5);
+            text-shadow: 0 0 3px #999999;
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
         #click-btn {
-            background: linear-gradient(45deg, #00d4ff, #ff69b3);
+            background: #222;
             font-size: 30px;
             padding: 50px 100px;
+            border: 2px solid #999999;
             border-radius: 50px;
-            box-shadow: 0 5px 15px rgba(0, 212, 255, 0.4), 0 0 20px rgba(255, 105, 180, 0.3);
-            transform: scale(1);
-            transition: transform 0.3s, box-shadow 0.4s ease;
-            position: relative;
-            z-index: 2;
-            border: 2px solid #fff;
-            text-shadow: 0 0 5px #fff;
+            transition: transform 0.3s;
         }
         #click-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 10px 25px rgba(0, 212, 255, 0.6), 0 0 30px rgba(255, 105, 180, 0.5);
+            transform: scale(1.05);
         }
         #click-btn:active {
             transform: scale(1);
-            box-shadow: 0 3px 5px rgba(0, 212, 255, 0.3);
         }
         .container {
             display: flex;
@@ -97,27 +89,26 @@
             margin-top: 60px;
         }
         .card {
-            background: rgba(50, 50, 80, 0.8);
+            background: #111;
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path d="M0 10L10 0M2 10L12 0M4 10L14 0" stroke="%23999999" stroke-width="0.5" opacity="0.3"/></svg>');
+            background-size: 10px 10px;
             padding: 20px;
             border-radius: 12px;
             width: 300px;
             text-align: center;
-            box-shadow: 0 6px 15px rgba(0, 212, 255, 0.2);
-            transform: translateY(-30px);
-            opacity: 0;
+            border: 1px solid #999999;
             animation: slideUp 0.5s ease-in-out forwards;
-            border: 1px solid rgba(0, 212, 255, 0.3);
         }
         .card h3 {
             font-size: 22px;
             margin-bottom: 15px;
+            text-shadow: 0 0 2px #999999;
             text-transform: uppercase;
-            text-shadow: 0 0 5px rgba(0, 212, 255, 0.5);
         }
         .card p {
             font-size: 16px;
             margin-bottom: 10px;
-            color: #ddd;
+            color: #bbb;
         }
         #profile-picture, #popup-profile-picture {
             width: 100px;
@@ -125,41 +116,44 @@
             border-radius: 50%;
             margin: 0 auto 10px;
             display: block;
-            border: 2px solid #00d4ff;
+            border: 1px solid #999999;
         }
         .leaderboard-item {
             padding: 15px;
             border-radius: 8px;
-            background: rgba(70, 70, 100, 0.9);
+            background: #111;
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path d="M0 10L10 0M2 10L12 0M4 10L14 0" stroke="%23999999" stroke-width="0.5" opacity="0.3"/></svg>');
+            background-size: 10px 10px;
             margin-bottom: 15px;
             text-align: left;
             font-size: 16px;
             transition: background 0.3s;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
             display: flex;
             align-items: center;
             cursor: pointer;
-            border: 1px solid rgba(0, 212, 255, 0.2);
+            border: 1px solid #999999;
         }
         .leaderboard-item img {
             width: 30px;
             height: 30px;
             border-radius: 50%;
             margin-right: 10px;
-            display: inline-block;
-            border: 1px solid #00d4ff;
-        }
-        .leaderboard-item span {
-            display: inline-block;
+            border: 1px solid #999999;
         }
         .leaderboard-item:hover {
-            background: rgba(90, 90, 120, 0.9);
+            background: #222;
+        }
+        .leaderboard-item.highlight {
+            animation: highlight 0.5s ease;
         }
         @keyframes slideUp {
             0% { transform: translateY(30px); opacity: 0; }
             100% { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes highlight {
+            0% { background: #333; }
+            50% { background: #444; }
+            100% { background: #111; }
         }
         .space-background {
             position: absolute;
@@ -172,10 +166,11 @@
         }
         .star {
             position: absolute;
-            background-color: white;
+            background-color: #fff;
             border-radius: 50%;
-            opacity: 0.6;
+            opacity: 0.5;
             animation: moveStars 20s linear infinite;
+            will-change: transform;
         }
         @keyframes moveStars {
             0% { transform: translateY(-100vh); }
@@ -183,15 +178,14 @@
         }
         .particle {
             position: absolute;
-            background: radial-gradient(circle, rgba(0, 212, 255, 0.8), rgba(255, 105, 180, 0));
             border-radius: 50%;
             pointer-events: none;
-            animation: particleFade 1s ease-out forwards;
+            animation: particleMove 1s ease-out forwards;
             z-index: 1;
         }
-        @keyframes particleFade {
-            0% { opacity: 1; transform: scale(0.1); }
-            100% { opacity: 0; transform: scale(1.5); }
+        @keyframes particleMove {
+            0% { opacity: 1; transform: translate(0, 0) scale(1); }
+            100% { opacity: 0; transform: translate(calc(var(--velocity) * cos(var(--angle)) * 1px), calc(var(--velocity) * sin(var(--angle)) * 1px)) scale(0.5); }
         }
         #login-popup, #signup-popup, #welcome-popup, #leaderboard-popup, #rules-popup, #error-popup, #user-profile-popup, #edit-profile-popup {
             display: none;
@@ -199,68 +193,65 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(50, 50, 80, 0.95);
+            background: #111;
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path d="M0 10L10 0M2 10L12 0M4 10L14 0" stroke="%23999999" stroke-width="0.5" opacity="0.3"/></svg>');
+            background-size: 10px 10px;
             padding: 30px;
             border-radius: 15px;
             z-index: 10;
             color: #fff;
             text-align: center;
-            box-shadow: 0 10px 30px rgba(0, 212, 255, 0.4);
+            border: 1px solid #999999;
             width: 90%;
             max-width: 400px;
-            border: 1px solid rgba(0, 212, 255, 0.3);
         }
-        #edit-profile-popup {
-            text-align: left;
-        }
+        #edit-profile-popup { text-align: left; }
         #login-popup h2, #signup-popup h2, #welcome-popup h2, #leaderboard-popup h2, #rules-popup h2, #error-popup h2, #user-profile-popup h2, #edit-profile-popup h2 {
             margin-bottom: 20px;
             font-size: 24px;
-            text-shadow: 0 0 5px rgba(0, 212, 255, 0.5);
+            text-shadow: 0 0 2px #999999;
+            text-transform: uppercase;
         }
         #login-popup input, #signup-popup input, #edit-profile-popup textarea, #edit-profile-popup select, #edit-profile-popup input[type="file"] {
             width: 100%;
             padding: 10px;
             margin: 10px 0;
-            border: 1px solid #00d4ff;
+            border: 1px solid #999999;
             border-radius: 8px;
-            background: #2a2a5d;
+            background: #222;
             color: #fff;
             font-size: 16px;
         }
         #edit-profile-popup label {
             display: block;
             margin-top: 10px;
+            color: #fff;
         }
         #login-popup button, #signup-popup button, #welcome-popup button, #leaderboard-popup button, #rules-popup button, #error-popup button, #user-profile-popup button, #edit-profile-popup button {
-            background: #1a1a3d;
+            background: #222;
             color: #fff;
-            border: 1px solid #00d4ff;
+            border: 1px solid #999999;
             padding: 10px 20px;
             border-radius: 8px;
             cursor: pointer;
             font-size: 16px;
             margin-top: 10px;
-            transition: background 0.3s ease, transform 0.3s, box-shadow 0.3s;
+            transition: background 0.3s;
         }
         #login-popup button:hover, #signup-popup button:hover, #welcome-popup button:hover, #leaderboard-popup button:hover, #rules-popup button:hover, #error-popup button:hover, #user-profile-popup button:hover, #edit-profile-popup button:hover {
-            background: #2a2a5d;
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0, 212, 255, 0.5);
+            background: #333;
         }
         #login-popup button[type="submit"], #signup-popup button[type="submit"], #edit-profile-popup button[type="submit"] {
-            background: #ff1a75;
-            border: 1px solid #ff69b3;
+            background: #999999;
+            color: #000;
         }
         #login-popup button[type="submit"]:hover, #signup-popup button[type="submit"]:hover, #edit-profile-popup button[type="submit"]:hover {
-            background: #ff69b3;
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(255, 105, 180, 0.6);
+            background: #777777;
         }
         #welcome-popup p, #rules-popup p, #error-popup p, #user-profile-popup p {
             margin-bottom: 20px;
             font-size: 18px;
-            color: #ddd;
+            color: #bbb;
         }
         #overlay {
             position: absolute;
@@ -287,7 +278,7 @@
     </div>
 
     <h1>Click4Cash</h1>
-    <button id="click-btn" onclick="incrementClicks()">Click Me!</button>
+    <button id="click-btn" onclick="incrementClicks(event)">Click Me!</button>
     <p id="click-message" style="color: red; display: none;">Please sign in to start clicking!</p>
 
     <div class="container">
@@ -304,6 +295,7 @@
         </div>
         <div class="card">
             <h3>Leaderboard</h3>
+            <div id="leaderboard-loading" style="display: none;">Loading...</div>
             <div id="leaderboard"></div>
             <button onclick="showLeaderboardPopup()">See All</button>
         </div>
@@ -419,7 +411,8 @@
         let syncTimeout = null;
         let baseStarSpeed = 20;
         let clickSpeedBoost = false;
-        const defaultProfilePic = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="%23ccc"/><path d="M12 12c2.67 0 4 1.33 4 4H8c0-2.67 1.33-4 4-4z" fill="%23fff"/></svg>';
+        let leaderboardListener = null;
+        const defaultProfilePic = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24"><path d="M2 2l14 14-4 4-6-6-4-4z" fill="%23000"/><path d="M2 2l14 14-4 4-6-6-4-4z" stroke="%23fff" stroke-width="2" fill="none"/></svg>';
 
         if (!localStorage.getItem('visited')) {
             showRulesPopup();
@@ -428,7 +421,7 @@
 
         function initSpaceBackground() {
             const spaceBackground = document.getElementById('space-background');
-            const starCount = 100;
+            const starCount = 50; // Reduced for performance
             for (let i = 0; i < starCount; i++) {
                 const star = document.createElement('div');
                 star.classList.add('star');
@@ -443,67 +436,79 @@
 
         function updateStarSpeed(faster = false) {
             const stars = document.querySelectorAll('.star');
-            const newSpeed = faster ? baseStarSpeed / 2 : baseStarSpeed;
+            const newSpeed = faster ? baseStarSpeed / 4 : baseStarSpeed;
             stars.forEach(star => {
                 star.style.animationDuration = `${newSpeed + Math.random() * 5}s`;
             });
         }
 
         function createParticles(x, y) {
-            for (let i = 0; i < 10; i++) {
+            for (let i = 0; i < 20; i++) {
                 const particle = document.createElement('div');
                 particle.classList.add('particle');
-                const size = Math.random() * 20 + 10;
+                const size = Math.random() * 5 + 2;
                 particle.style.width = `${size}px`;
                 particle.style.height = `${size}px`;
-                particle.style.left = `${x - size / 2}px`;
-                particle.style.top = `${y - size / 2}px`;
+                particle.style.background = `hsl(${Math.random() * 360}, 100%, 50%)`;
+                particle.style.left = `${x}px`;
+                particle.style.top = `${y}px`;
                 const angle = Math.random() * 2 * Math.PI;
-                const velocity = Math.random() * 100 + 50;
-                particle.style.transform = `translate(${Math.cos(angle) * velocity}px, ${Math.sin(angle) * velocity}px)`;
+                const velocity = Math.random() * 200 + 100;
+                const duration = Math.random() * 0.5 + 0.5;
+                particle.style.animation = `particleMove ${duration}s ease-out forwards`;
+                particle.style.setProperty('--angle', angle);
+                particle.style.setProperty('--velocity', velocity);
                 document.body.appendChild(particle);
-                setTimeout(() => particle.remove(), 1000);
+                setTimeout(() => particle.remove(), duration * 1000);
             }
         }
 
-        function updateLeaderboard() {
-            const leaderboard = document.getElementById('leaderboard');
-            leaderboard.innerHTML = ''; // Clear existing content
-            db.collection("users").orderBy("clicks", "desc").limit(5).get()
-                .then((snapshot) => {
-                    totalClicks = 0;
-                    snapshot.forEach(doc => {
-                        const userData = doc.data();
-                        if (userData.clicks !== undefined) {
-                            const item = document.createElement('div');
-                            item.className = 'leaderboard-item';
-                            item.dataset.userId = doc.id;
-                            item.onclick = () => showUserProfile(doc.id);
-
-                            const img = document.createElement('img');
-                            img.src = userData.profilePictureUrl || defaultProfilePic;
-                            img.alt = 'Profile';
-
-                            const span = document.createElement('span');
-                            span.textContent = `${userData.username} - ${userData.clicks} clicks`;
-
-                            item.appendChild(img);
-                            item.appendChild(span);
-                            leaderboard.appendChild(item);
-
-                            totalClicks += userData.clicks;
+        function startLeaderboardListener() {
+            if (leaderboardListener) leaderboardListener();
+            document.getElementById('leaderboard-loading').style.display = 'block';
+            leaderboardListener = db.collection("users").orderBy("clicks", "desc").limit(5).onSnapshot((snapshot) => {
+                document.getElementById('leaderboard-loading').style.display = 'none';
+                const leaderboard = document.getElementById('leaderboard');
+                leaderboard.innerHTML = '';
+                totalClicks = 0;
+                snapshot.forEach(doc => {
+                    const userData = doc.data();
+                    if (userData.clicks !== undefined) {
+                        const item = document.createElement('div');
+                        item.className = 'leaderboard-item';
+                        item.dataset.userId = doc.id;
+                        if (doc.id === currentUser?.uid) {
+                            item.id = 'user-leaderboard-item';
                         }
-                    });
-                    updateChanceOfWinning();
-                })
-                .catch(err => console.error("Error fetching leaderboard: ", err));
+                        item.onclick = () => showUserProfile(doc.id);
+
+                        const img = document.createElement('img');
+                        img.src = userData.profilePictureUrl || defaultProfilePic;
+                        img.alt = 'Profile';
+
+                        const span = document.createElement('span');
+                        span.textContent = `${userData.username} - ${userData.clicks} clicks`;
+
+                        item.appendChild(img);
+                        item.appendChild(span);
+                        leaderboard.appendChild(item);
+
+                        totalClicks += userData.clicks;
+                    }
+                });
+                updateChanceOfWinning();
+            }, (err) => {
+                console.error("Error in leaderboard listener: ", err);
+                document.getElementById('leaderboard-loading').style.display = 'none';
+            });
         }
 
         function showLeaderboardPopup() {
             const fullLeaderboard = document.getElementById('full-leaderboard');
-            fullLeaderboard.innerHTML = ''; // Clear existing content
+            fullLeaderboard.innerHTML = '<div>Loading...</div>';
             db.collection("users").orderBy("clicks", "desc").get()
                 .then((snapshot) => {
+                    fullLeaderboard.innerHTML = '';
                     snapshot.forEach(doc => {
                         const userData = doc.data();
                         if (userData.clicks !== undefined) {
@@ -527,7 +532,10 @@
                     document.getElementById('leaderboard-popup').style.display = 'block';
                     document.getElementById('overlay').style.display = 'block';
                 })
-                .catch(err => console.error("Error fetching leaderboard: ", err));
+                .catch(err => {
+                    console.error("Error fetching leaderboard: ", err);
+                    fullLeaderboard.innerHTML = 'Error loading leaderboard.';
+                });
         }
 
         function hideLeaderboardPopup() {
@@ -647,23 +655,12 @@
             event.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            console.log("Login attempt:", { email, password });
-
             auth.signInWithEmailAndPassword(email, password)
                 .then((userCredential) => {
-                    currentUser = userCredential.user;
-                    loadUserData();
-                    setTimeout(updateLeaderboard, 1000);
-                    document.getElementById('click-message').style.display = 'none';
-                    document.getElementById('login-btn').style.display = 'none';
-                    document.getElementById('signup-btn').style.display = 'none';
-                    document.getElementById('logout-btn').style.display = 'inline-block';
-                    document.getElementById('click-btn').disabled = false;
                     hideLogin();
-                    document.getElementById('user-email').innerText = currentUser.email;
+                    showWelcomePopup(userCredential.user.email.split('@')[0]);
                 })
                 .catch((error) => {
-                    console.error("Login error:", error);
                     let friendlyMessage = "Login failed. Please try again.";
                     if (error.code === 'auth/user-not-found') {
                         friendlyMessage = "No account found with this email. Please sign up!";
@@ -701,7 +698,6 @@
                         profilePictureUrl: "",
                         country: ""
                     }).then(() => {
-                        updateLeaderboard();
                         hideSignUp();
                         showWelcomePopup(username);
                     }).catch((error) => console.error("Error creating user document: ", error));
@@ -718,6 +714,7 @@
         }
 
         function logout() {
+            if (leaderboardListener) leaderboardListener();
             auth.signOut().then(() => {
                 currentUser = null;
                 localClicks = 0;
@@ -735,6 +732,7 @@
                 document.getElementById('edit-profile-btn').style.display = 'none';
                 document.getElementById('click-message').style.display = 'block';
                 document.getElementById('click-btn').disabled = true;
+                document.getElementById('leaderboard').innerHTML = '';
             }).catch((error) => console.error("Logout failed: ", error));
         }
 
@@ -753,7 +751,8 @@
                             document.getElementById('profile-picture').src = data.profilePictureUrl;
                             document.getElementById('profile-picture').style.display = 'block';
                         } else {
-                            document.getElementById('profile-picture').style.display = 'none';
+                            document.getElementById('profile-picture').src = defaultProfilePic;
+                            document.getElementById('profile-picture').style.display = 'block';
                         }
                         document.getElementById('edit-profile-btn').style.display = 'block';
                         document.getElementById('user-email').innerText = data.emailPublic ? data.email : data.username;
@@ -785,12 +784,10 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    console.log("ImgBB Response:", data);
                     if (data.success) {
                         const url = data.data.url;
                         return userRef.update({ bio, country, profilePictureUrl: url })
                             .then(() => {
-                                console.log("Firestore updated with:", { bio, country, profilePictureUrl: url });
                                 loadUserData();
                                 hideEditProfilePopup();
                             });
@@ -805,7 +802,6 @@
             } else {
                 userRef.update({ bio, country })
                     .then(() => {
-                        console.log("Firestore updated with:", { bio, country });
                         loadUserData();
                         hideEditProfilePopup();
                     })
@@ -820,7 +816,6 @@
                     clicks: firebase.firestore.FieldValue.increment(clickBuffer)
                 }).then(() => {
                     clickBuffer = 0;
-                    updateLeaderboard();
                 }).catch(err => console.error("Error syncing clicks: ", err));
             }
         }
@@ -836,8 +831,8 @@
             document.getElementById('click-count').innerText = `Clicks: ${localClicks}`;
 
             const rect = document.getElementById('click-btn').getBoundingClientRect();
-            const x = rect.left + rect.width / 2;
-            const y = rect.top + rect.height / 2;
+            const x = event.clientX;
+            const y = event.clientY;
             createParticles(x, y);
 
             if (!clickSpeedBoost) {
@@ -846,24 +841,36 @@
                 setTimeout(() => {
                     clickSpeedBoost = false;
                     updateStarSpeed(false);
-                }, 2000);
+                }, 500);
             }
 
             if (syncTimeout) clearTimeout(syncTimeout);
             syncTimeout = setTimeout(syncClicks, 500);
+
+            if (currentUser) {
+                const userItem = document.querySelector(`.leaderboard-item[data-user-id="${currentUser.uid}"]`);
+                if (userItem) {
+                    const span = userItem.querySelector('span');
+                    const username = span.textContent.split(' - ')[0];
+                    span.textContent = `${username} - ${localClicks} clicks`;
+                    userItem.classList.add('highlight');
+                    setTimeout(() => userItem.classList.remove('highlight'), 500);
+                }
+            }
         }
 
         auth.onAuthStateChanged((user) => {
             if (user) {
                 currentUser = user;
                 loadUserData();
-                setTimeout(updateLeaderboard, 1000);
+                startLeaderboardListener();
                 document.getElementById('login-btn').style.display = 'none';
                 document.getElementById('signup-btn').style.display = 'none';
                 document.getElementById('logout-btn').style.display = 'inline-block';
                 document.getElementById('click-btn').disabled = false;
                 document.getElementById('click-message').style.display = 'none';
             } else {
+                if (leaderboardListener) leaderboardListener();
                 currentUser = null;
                 localClicks = 0;
                 clickBuffer = 0;
@@ -879,6 +886,7 @@
                 document.getElementById('click-btn').disabled = true;
                 document.getElementById('edit-profile-btn').style.display = 'none';
                 document.getElementById('click-message').style.display = 'block';
+                document.getElementById('leaderboard').innerHTML = '';
             }
         });
 
