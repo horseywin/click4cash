@@ -111,11 +111,11 @@
             color: #bbb;
         }
         #profile-picture, #popup-profile-picture {
+            display: block;
+            margin: 0 auto;
             width: 100px;
             height: 100px;
             border-radius: 50%;
-            margin: 0 auto 10px;
-            display: block;
             border: 1px solid #999999;
         }
         .leaderboard-item {
@@ -143,17 +143,18 @@
         .leaderboard-item:hover {
             background: #222;
         }
-        .leaderboard-item.highlight {
-            animation: highlight 0.5s ease;
+        .leaderboard-item .click-increment {
+            color: #00ff00;
+            margin-left: 10px;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        .leaderboard-item .click-increment.show {
+            opacity: 1;
         }
         @keyframes slideUp {
             0% { transform: translateY(30px); opacity: 0; }
             100% { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes highlight {
-            0% { background: #333; }
-            50% { background: #444; }
-            100% { background: #111; }
         }
         .space-background {
             position: absolute;
@@ -169,7 +170,7 @@
             background-color: #fff;
             border-radius: 50%;
             opacity: 0.5;
-            animation: moveStars 20s linear infinite;
+            animation: moveStars linear infinite;
             will-change: transform;
         }
         @keyframes moveStars {
@@ -180,12 +181,12 @@
             position: absolute;
             border-radius: 50%;
             pointer-events: none;
-            animation: particleMove 1s ease-out forwards;
+            animation: particleMove 0.5s ease-out forwards;
             z-index: 1;
         }
         @keyframes particleMove {
             0% { opacity: 1; transform: translate(0, 0) scale(1); }
-            100% { opacity: 0; transform: translate(calc(var(--velocity) * cos(var(--angle)) * 1px), calc(var(--velocity) * sin(var(--angle)) * 1px)) scale(0.5); }
+            100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.5); }
         }
         #login-popup, #signup-popup, #welcome-popup, #leaderboard-popup, #rules-popup, #error-popup, #user-profile-popup, #edit-profile-popup {
             display: none;
@@ -263,10 +264,20 @@
             z-index: 5;
             display: none;
         }
-        #edit-profile-btn {
+        #edit-profile-btn, #delete-account-btn {
             display: block;
             margin: 0 auto;
             padding: 10px 20px;
+        }
+        @media (max-width: 768px) {
+            h1 { font-size: 36px; }
+            #click-btn { padding: 30px 60px; font-size: 24px; }
+            .container { flex-direction: column; align-items: center; }
+            .card { width: 90%; }
+        }
+        @media (max-width: 480px) {
+            h1 { font-size: 24px; }
+            #click-btn { padding: 20px 40px; font-size: 18px; }
         }
     </style>
 </head>
@@ -290,8 +301,10 @@
             <p id="bio">No bio yet</p>
             <p id="country">Not specified</p>
             <p id="click-count">Clicks: 0</p>
+            <p id="highest-cps">Highest CPS: 0</p>
             <p id="chance-of-winning">Chance of Winning: 0%</p>
             <button id="edit-profile-btn" onclick="showEditProfilePopup()" style="display: none;">Edit Profile</button>
+            <button id="delete-account-btn" onclick="deleteAccount()" style="display: none;">Delete Account</button>
         </div>
         <div class="card">
             <h3>Leaderboard</h3>
@@ -362,6 +375,7 @@
         <p id="popup-country"></p>
         <p id="popup-join-date"></p>
         <p id="popup-clicks"></p>
+        <p id="popup-highest-cps"></p>
         <button onclick="hideUserProfilePopup()">Close</button>
     </div>
 
@@ -412,6 +426,10 @@
         let baseStarSpeed = 20;
         let clickSpeedBoost = false;
         let leaderboardListener = null;
+        let profileListener = null;
+        let clickTimestamps = [];
+        let fakeCPSCount = 0;
+        let highestCPS = 0;
         const defaultProfilePic = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24"><path d="M2 2l14 14-4 4-6-6-4-4z" fill="%23000"/><path d="M2 2l14 14-4 4-6-6-4-4z" stroke="%23fff" stroke-width="2" fill="none"/></svg>';
 
         if (!localStorage.getItem('visited')) {
@@ -421,7 +439,7 @@
 
         function initSpaceBackground() {
             const spaceBackground = document.getElementById('space-background');
-            const starCount = 50; // Reduced for performance
+            const starCount = 30; // Reduced for performance
             for (let i = 0; i < starCount; i++) {
                 const star = document.createElement('div');
                 star.classList.add('star');
@@ -443,23 +461,47 @@
         }
 
         function createParticles(x, y) {
-            for (let i = 0; i < 20; i++) {
+            for (let i = 0; i < 10; i++) {
                 const particle = document.createElement('div');
                 particle.classList.add('particle');
-                const size = Math.random() * 5 + 2;
+                const size = Math.random() * 3 + 1;
                 particle.style.width = `${size}px`;
                 particle.style.height = `${size}px`;
-                particle.style.background = `hsl(${Math.random() * 360}, 100%, 50%)`;
+                particle.style.background = `hsl(${Math.random() * 60 + 30}, 100%, 50%)`; // Yellow to orange
                 particle.style.left = `${x}px`;
                 particle.style.top = `${y}px`;
                 const angle = Math.random() * 2 * Math.PI;
-                const velocity = Math.random() * 200 + 100;
-                const duration = Math.random() * 0.5 + 0.5;
-                particle.style.animation = `particleMove ${duration}s ease-out forwards`;
-                particle.style.setProperty('--angle', angle);
-                particle.style.setProperty('--velocity', velocity);
+                const velocity = Math.random() * 100 + 50;
+                const dx = Math.cos(angle) * velocity;
+                const dy = Math.sin(angle) * velocity;
+                particle.style.setProperty('--dx', `${dx}px`);
+                particle.style.setProperty('--dy', `${dy}px`);
                 document.body.appendChild(particle);
-                setTimeout(() => particle.remove(), duration * 1000);
+                setTimeout(() => particle.remove(), 500);
+            }
+        }
+
+        function startProfileListener() {
+            if (currentUser) {
+                profileListener = db.collection("users").doc(currentUser.uid).onSnapshot((doc) => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        localClicks = data.clicks || 0;
+                        document.getElementById('click-count').innerText = `Clicks: ${localClicks}`;
+                        document.getElementById('join-date').innerText = `Joined: ${new Date(data.joinDate).toLocaleDateString()}`;
+                        document.getElementById('bio').innerText = data.bio || "No bio yet";
+                        document.getElementById('country').innerText = data.country || "Not specified";
+                        document.getElementById('highest-cps').innerText = `Highest CPS: ${data.highestCPS || 0}`;
+                        if (data.profilePictureUrl) {
+                            document.getElementById('profile-picture').src = data.profilePictureUrl;
+                            document.getElementById('profile-picture').style.display = 'block';
+                        } else {
+                            document.getElementById('profile-picture').src = defaultProfilePic;
+                            document.getElementById('profile-picture').style.display = 'block';
+                        }
+                        document.getElementById('user-email').innerText = data.emailPublic ? data.email : data.username;
+                    }
+                });
             }
         }
 
@@ -481,18 +523,18 @@
                             item.id = 'user-leaderboard-item';
                         }
                         item.onclick = () => showUserProfile(doc.id);
-
                         const img = document.createElement('img');
                         img.src = userData.profilePictureUrl || defaultProfilePic;
                         img.alt = 'Profile';
-
                         const span = document.createElement('span');
                         span.textContent = `${userData.username} - ${userData.clicks} clicks`;
-
+                        const incrementSpan = document.createElement('span');
+                        incrementSpan.className = 'click-increment';
+                        incrementSpan.textContent = '+1';
                         item.appendChild(img);
                         item.appendChild(span);
+                        item.appendChild(incrementSpan);
                         leaderboard.appendChild(item);
-
                         totalClicks += userData.clicks;
                     }
                 });
@@ -516,14 +558,11 @@
                             item.className = 'leaderboard-item';
                             item.dataset.userId = doc.id;
                             item.onclick = () => showUserProfile(doc.id);
-
                             const img = document.createElement('img');
                             img.src = userData.profilePictureUrl || defaultProfilePic;
                             img.alt = 'Profile';
-
                             const span = document.createElement('span');
                             span.textContent = `${userData.username} - ${userData.clicks} clicks`;
-
                             item.appendChild(img);
                             item.appendChild(span);
                             fullLeaderboard.appendChild(item);
@@ -619,6 +658,7 @@
                     document.getElementById('popup-country').innerText = data.country || "Not specified";
                     document.getElementById('popup-join-date').innerText = `Joined: ${new Date(data.joinDate).toLocaleDateString()}`;
                     document.getElementById('popup-clicks').innerText = `Clicks: ${data.clicks || 0}`;
+                    document.getElementById('popup-highest-cps').innerText = `Highest CPS: ${data.highestCPS || 0}`;
                     document.getElementById('user-profile-popup').style.display = 'block';
                     document.getElementById('overlay').style.display = 'block';
                 }
@@ -696,7 +736,8 @@
                         playtime: 0,
                         bio: "",
                         profilePictureUrl: "",
-                        country: ""
+                        country: "",
+                        highestCPS: 0
                     }).then(() => {
                         hideSignUp();
                         showWelcomePopup(username);
@@ -715,6 +756,7 @@
 
         function logout() {
             if (leaderboardListener) leaderboardListener();
+            if (profileListener) profileListener();
             auth.signOut().then(() => {
                 currentUser = null;
                 localClicks = 0;
@@ -726,10 +768,12 @@
                 document.getElementById('join-date').innerText = '';
                 document.getElementById('profile-picture').style.display = 'none';
                 document.getElementById('chance-of-winning').innerText = 'Chance of Winning: 0%';
+                document.getElementById('highest-cps').innerText = 'Highest CPS: 0';
                 document.getElementById('login-btn').style.display = 'inline-block';
                 document.getElementById('signup-btn').style.display = 'inline-block';
                 document.getElementById('logout-btn').style.display = 'none';
                 document.getElementById('edit-profile-btn').style.display = 'none';
+                document.getElementById('delete-account-btn').style.display = 'none';
                 document.getElementById('click-message').style.display = 'block';
                 document.getElementById('click-btn').disabled = true;
                 document.getElementById('leaderboard').innerHTML = '';
@@ -747,6 +791,7 @@
                         document.getElementById('join-date').innerText = `Joined: ${new Date(data.joinDate).toLocaleDateString()}`;
                         document.getElementById('bio').innerText = data.bio || "No bio yet";
                         document.getElementById('country').innerText = data.country || "Not specified";
+                        document.getElementById('highest-cps').innerText = `Highest CPS: ${data.highestCPS || 0}`;
                         if (data.profilePictureUrl) {
                             document.getElementById('profile-picture').src = data.profilePictureUrl;
                             document.getElementById('profile-picture').style.display = 'block';
@@ -755,6 +800,7 @@
                             document.getElementById('profile-picture').style.display = 'block';
                         }
                         document.getElementById('edit-profile-btn').style.display = 'block';
+                        document.getElementById('delete-account-btn').style.display = 'block';
                         document.getElementById('user-email').innerText = data.emailPublic ? data.email : data.username;
                         document.getElementById('click-message').style.display = 'none';
                     }
@@ -809,15 +855,24 @@
             }
         }
 
-        function syncClicks() {
-            if (clickBuffer > 0 && currentUser) {
-                const userRef = db.collection("users").doc(currentUser.uid);
-                userRef.update({
-                    clicks: firebase.firestore.FieldValue.increment(clickBuffer)
-                }).then(() => {
-                    clickBuffer = 0;
-                }).catch(err => console.error("Error syncing clicks: ", err));
+        function calculateCPS() {
+            const now = Date.now();
+            clickTimestamps = clickTimestamps.filter(ts => now - ts < 1000);
+            const cps = clickTimestamps.length;
+            if (cps > 40) {
+                showErrorPopup("Autoclicker detected! Please stop using autoclickers.");
+                fakeCPSCount += cps;
+                if (fakeCPSCount > 300) {
+                    deleteAccount(true);
+                }
             }
+            if (cps > highestCPS) {
+                highestCPS = cps;
+                if (currentUser) {
+                    db.collection("users").doc(currentUser.uid).update({ highestCPS: cps });
+                }
+            }
+            return cps;
         }
 
         function incrementClicks(event) {
@@ -828,6 +883,8 @@
 
             localClicks += 1;
             clickBuffer += 1;
+            clickTimestamps.push(Date.now());
+            calculateCPS();
             document.getElementById('click-count').innerText = `Clicks: ${localClicks}`;
 
             const rect = document.getElementById('click-btn').getBoundingClientRect();
@@ -850,19 +907,40 @@
             if (currentUser) {
                 const userItem = document.querySelector(`.leaderboard-item[data-user-id="${currentUser.uid}"]`);
                 if (userItem) {
-                    const span = userItem.querySelector('span');
-                    const username = span.textContent.split(' - ')[0];
-                    span.textContent = `${username} - ${localClicks} clicks`;
-                    userItem.classList.add('highlight');
-                    setTimeout(() => userItem.classList.remove('highlight'), 500);
+                    const incrementSpan = userItem.querySelector('.click-increment');
+                    incrementSpan.classList.add('show');
+                    setTimeout(() => incrementSpan.classList.remove('show'), 500);
                 }
             }
+        }
+
+        function syncClicks() {
+            if (clickBuffer > 0 && currentUser) {
+                const userRef = db.collection("users").doc(currentUser.uid);
+                userRef.update({
+                    clicks: firebase.firestore.FieldValue.increment(clickBuffer)
+                }).then(() => {
+                    clickBuffer = 0;
+                }).catch(err => console.error("Error syncing clicks: ", err));
+            }
+        }
+
+        function deleteAccount(force = false) {
+            if (!currentUser) return;
+            if (!force && !confirm("Are you sure you want to delete your account? This action cannot be undone.")) return;
+            const userRef = db.collection("users").doc(currentUser.uid);
+            userRef.delete().then(() => {
+                auth.currentUser.delete().then(() => {
+                    logout();
+                });
+            });
         }
 
         auth.onAuthStateChanged((user) => {
             if (user) {
                 currentUser = user;
                 loadUserData();
+                startProfileListener();
                 startLeaderboardListener();
                 document.getElementById('login-btn').style.display = 'none';
                 document.getElementById('signup-btn').style.display = 'none';
@@ -871,6 +949,7 @@
                 document.getElementById('click-message').style.display = 'none';
             } else {
                 if (leaderboardListener) leaderboardListener();
+                if (profileListener) profileListener();
                 currentUser = null;
                 localClicks = 0;
                 clickBuffer = 0;
@@ -883,8 +962,9 @@
                 document.getElementById('login-btn').style.display = 'inline-block';
                 document.getElementById('signup-btn').style.display = 'inline-block';
                 document.getElementById('logout-btn').style.display = 'none';
-                document.getElementById('click-btn').disabled = true;
                 document.getElementById('edit-profile-btn').style.display = 'none';
+                document.getElementById('delete-account-btn').style.display = 'none';
+                document.getElementById('click-btn').disabled = true;
                 document.getElementById('click-message').style.display = 'block';
                 document.getElementById('leaderboard').innerHTML = '';
             }
