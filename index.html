@@ -412,7 +412,7 @@
         };
         firebase.initializeApp(firebaseConfig);
         const appCheck = firebase.appCheck();
-        appCheck.activate('6LdQq-4qAAAAABzNzVlhJzLlxbK3zh6M5NiHY7cf', true); // Replace with your reCAPTCHA Site 
+        appCheck.activate('6LdQq-4qAAAAABzNzVlhJzLlxbK3zh6M5NiHY7cf', true); // Replace with your reCAPTCHA Site Key
         appCheck.getToken().then(token => console.log("App Check Token:", token)).catch(err => console.error("App Check Error:", err));
         const auth = firebase.auth();
         const db = firebase.firestore();
@@ -956,56 +956,61 @@
                 });
             }).catch(err => console.error("Error deleting account:", err));
         }
-    
+
         auth.onAuthStateChanged((user) => {
-            if (user) {
-                currentUser = user;
-                if (currentUser.emailVerified) {
-                    loadUserData();
-                    startProfileListener();
-                    startLeaderboardListener();
-                    document.getElementById('login-btn').style.display = 'none';
-                    document.getElementById('signup-btn').style.display = 'none';
-                    document.getElementById('logout-btn').style.display = 'inline-block';
-                    document.getElementById('click-btn').disabled = false;
-                    document.getElementById('click-message').style.display = 'none';
-                    document.getElementById('edit-profile-btn').style.display = 'block';
-                    document.getElementById('delete-account-btn').style.display = 'block';
-                } else {
-                    document.getElementById('click-btn').disabled = true;
-                    document.getElementById('click-message').innerText = "Please verify your email to start clicking!";
-                    document.getElementById('click-message').style.display = 'block';
-                    document.getElementById('login-btn').style.display = 'none';
-                    document.getElementById('signup-btn').style.display = 'none';
-                    document.getElementById('logout-btn').style.display = 'inline-block';
-                    document.getElementById('edit-profile-btn').style.display = 'none';
-                    document.getElementById('delete-account-btn').style.display = 'block';
-                }
-            } else {
-                if (leaderboardListener) leaderboardListener();
-                if (profileListener) profileListener();
-                currentUser = null;
-                localClicks = 0;
-                clickBuffer = 0;
-                document.getElementById('click-count').innerText = 'Clicks: 0';
-                document.getElementById('user-email').innerText = 'Not Logged In';
-                document.getElementById('bio').innerText = 'No bio yet';
-                document.getElementById('country').innerText = 'Not specified';
-                document.getElementById('join-date').innerText = '';
-                document.getElementById('profile-picture').style.display = 'none';
-                document.getElementById('chance-of-winning').innerText = 'Chance of Winning: 0%';
-                document.getElementById('highest-cps').innerText = 'Highest CPS: 0';
-                document.getElementById('login-btn').style.display = 'inline-block';
-                document.getElementById('signup-btn').style.display = 'inline-block';
-                document.getElementById('logout-btn').style.display = 'none';
-                document.getElementById('edit-profile-btn').style.display = 'none';
-                document.getElementById('delete-account-btn').style.display = 'none';
-                document.getElementById('click-btn').disabled = true;
-                document.getElementById('click-message').style.display = 'block';
-                document.getElementById('leaderboard').innerHTML = '';
-            }
-        });
-    
+    console.log("Auth State Changed:", user ? user.uid : "No user", user ? user.emailVerified : "N/A");
+    if (user) {
+        user.getIdToken().then(token => console.log("ID Token:", token)).catch(err => console.error("ID Token Error:", err));
+        currentUser = user;
+        if (currentUser.emailVerified) {
+            console.log("User is verified, loading data...");
+            loadUserData();
+            startProfileListener();
+            startLeaderboardListener();
+            document.getElementById('login-btn').style.display = 'none';
+            document.getElementById('signup-btn').style.display = 'none';
+            document.getElementById('logout-btn').style.display = 'inline-block';
+            document.getElementById('click-btn').disabled = false;
+            document.getElementById('click-message').style.display = 'none';
+            document.getElementById('edit-profile-btn').style.display = 'block';
+            document.getElementById('delete-account-btn').style.display = 'block';
+        } else {
+            console.log("User is not verified.");
+            document.getElementById('click-btn').disabled = true;
+            document.getElementById('click-message').innerText = "Please verify your email to start clicking!";
+            document.getElementById('click-message').style.display = 'block';
+            document.getElementById('login-btn').style.display = 'none';
+            document.getElementById('signup-btn').style.display = 'none';
+            document.getElementById('logout-btn').style.display = 'inline-block';
+            document.getElementById('edit-profile-btn').style.display = 'none';
+            document.getElementById('delete-account-btn').style.display = 'block';
+        }
+    } else {
+        console.log("No user logged in.");
+        if (leaderboardListener) leaderboardListener();
+        if (profileListener) profileListener();
+        currentUser = null;
+        localClicks = 0;
+        clickBuffer = 0;
+        document.getElementById('click-count').innerText = 'Clicks: 0';
+        document.getElementById('user-email').innerText = 'Not Logged In';
+        document.getElementById('bio').innerText = 'No bio yet';
+        document.getElementById('country').innerText = 'Not specified';
+        document.getElementById('join-date').innerText = '';
+        document.getElementById('profile-picture').style.display = 'none';
+        document.getElementById('chance-of-winning').innerText = 'Chance of Winning: 0%';
+        document.getElementById('highest-cps').innerText = 'Highest CPS: 0';
+        document.getElementById('login-btn').style.display = 'inline-block';
+        document.getElementById('signup-btn').style.display = 'inline-block';
+        document.getElementById('logout-btn').style.display = 'none';
+        document.getElementById('edit-profile-btn').style.display = 'none';
+        document.getElementById('delete-account-btn').style.display = 'none';
+        document.getElementById('click-btn').disabled = true;
+        document.getElementById('click-message').style.display = 'block';
+        document.getElementById('leaderboard').innerHTML = '';
+    }
+    });
+
         initSpaceBackground();
     </script>
 </body>
