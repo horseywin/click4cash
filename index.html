@@ -412,7 +412,7 @@
         };
         firebase.initializeApp(firebaseConfig);
         const appCheck = firebase.appCheck();
-        appCheck.activate('YOUR_ACTUAL_RECAPTCHA_SITE_KEY_HERE', true); // Replace with your reCAPTCHA Site Key
+        appCheck.activate('6LdQq-4qAAAAABzNzVlhJzLlxbK3zh6M5NiHY7cf', true); // Replace with your reCAPTCHA Site 
         appCheck.getToken().then(token => console.log("App Check Token:", token)).catch(err => console.error("App Check Error:", err));
         const auth = firebase.auth();
         const db = firebase.firestore();
