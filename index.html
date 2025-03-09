@@ -412,8 +412,7 @@
         };
         firebase.initializeApp(firebaseConfig);
         const appCheck = firebase.appCheck();
-        appCheck.activate('6LdQq-4qAAAAABzNzVlhJzLlxbK3zh6M5NiHY7cf', true); // Replace with your reCAPTCHA Site Key
-        appCheck.getToken().then(token => console.log("App Check Token:", token)).catch(err => console.error("App Check Error:", err));
+        appCheck.activate('6Lf...YOUR_RECAPTCHA_SITE_KEY...', true); // Replace with your actual reCAPTCHA v3 Site Key
         const auth = firebase.auth();
         const db = firebase.firestore();
         const storage = firebase.storage();
@@ -482,7 +481,7 @@
         }
     
         function startProfileListener() {
-            if (currentUser && currentUser.emailVerified) {
+            if (currentUser) {
                 profileListener = db.collection("users").doc(currentUser.uid).onSnapshot((doc) => {
                     if (doc.exists) {
                         const data = doc.data();
@@ -506,7 +505,7 @@
         }
     
         function startLeaderboardListener() {
-            if (currentUser && currentUser.emailVerified) {
+            if (currentUser) {
                 if (leaderboardListener) leaderboardListener();
                 document.getElementById('leaderboard-loading').style.display = 'block';
                 leaderboardListener = db.collection("users").orderBy("clicks", "desc").limit(5).onSnapshot((snapshot) => {
@@ -548,8 +547,8 @@
         }
     
         function showLeaderboardPopup() {
-            if (!currentUser || !currentUser.emailVerified) {
-                showErrorPopup("Please verify your email to view the leaderboard!");
+            if (!currentUser) {
+                showErrorPopup("Please log in to view the leaderboard!");
                 return;
             }
             const fullLeaderboard = document.getElementById('full-leaderboard');
@@ -589,7 +588,7 @@
         }
     
         function updateChanceOfWinning() {
-            if (currentUser && currentUser.emailVerified) {
+            if (currentUser) {
                 const userRef = db.collection("users").doc(currentUser.uid);
                 userRef.get().then((doc) => {
                     if (doc.exists) {
@@ -632,7 +631,7 @@
         }
     
         function showWelcomePopup(username) {
-            document.getElementById('welcome-message').innerText = `Welcome, ${username}! ${currentUser && !currentUser.emailVerified ? "Verify your email to start clicking!" : "You could win 100% of the weekly ad revenue!"}`;
+            document.getElementById('welcome-message').innerText = `Welcome, ${username}! You could win 100% of the weekly ad revenue!`;
             document.getElementById('welcome-popup').style.display = 'block';
             document.getElementById('overlay').style.display = 'block';
         }
@@ -654,8 +653,8 @@
         }
     
         function showUserProfile(userId) {
-            if (!currentUser || !currentUser.emailVerified) {
-                showErrorPopup("Please verify your email to view profiles!");
+            if (!currentUser) {
+                showErrorPopup("Please log in to view profiles!");
                 return;
             }
             const userRef = db.collection("users").doc(userId);
@@ -681,8 +680,8 @@
         }
     
         function showEditProfilePopup() {
-            if (!currentUser || !currentUser.emailVerified) {
-                showErrorPopup("Please verify your email to edit your profile!");
+            if (!currentUser) {
+                showErrorPopup("Please log in to edit your profile!");
                 return;
             }
             const userRef = db.collection("users").doc(currentUser.uid);
@@ -738,25 +737,22 @@
             auth.createUserWithEmailAndPassword(email, password)
                 .then((userCredential) => {
                     currentUser = userCredential.user;
-                    currentUser.sendEmailVerification().then(() => {
-                        const userRef = db.collection("users").doc(currentUser.uid);
-                        userRef.set({
-                            username: username,
-                            email: currentUser.email,
-                            emailPublic: emailPublic,
-                            clicks: 0,
-                            joinDate: new Date().toISOString(),
-                            playtime: 0,
-                            bio: "",
-                            profilePictureUrl: "",
-                            country: "",
-                            highestCPS: 0,
-                            emailVerified: false
-                        }).then(() => {
-                            hideSignUp();
-                            showWelcomePopup(username);
-                        }).catch(err => console.error("Error setting user data:", err));
-                    });
+                    const userRef = db.collection("users").doc(currentUser.uid);
+                    userRef.set({
+                        username: username,
+                        email: currentUser.email,
+                        emailPublic: emailPublic,
+                        clicks: 0,
+                        joinDate: new Date().toISOString(),
+                        playtime: 0,
+                        bio: "",
+                        profilePictureUrl: "",
+                        country: "",
+                        highestCPS: 0
+                    }).then(() => {
+                        hideSignUp();
+                        showWelcomePopup(username);
+                    }).catch(err => console.error("Error setting user data:", err));
                 })
                 .catch((error) => {
                     let friendlyMessage = "Sign-up failed. Please try again.";
@@ -796,7 +792,7 @@
         }
     
         function loadUserData() {
-            if (currentUser && currentUser.emailVerified) {
+            if (currentUser) {
                 const userRef = db.collection("users").doc(currentUser.uid);
                 userRef.get().then((doc) => {
                     if (doc.exists) {
@@ -825,8 +821,8 @@
     
         function saveProfile(event) {
             event.preventDefault();
-            if (!currentUser || !currentUser.emailVerified) {
-                showErrorPopup("Please verify your email to save your profile!");
+            if (!currentUser) {
+                showErrorPopup("Please log in to save your profile!");
                 return;
             }
             const bio = document.getElementById('bio-input').value;
@@ -885,7 +881,7 @@
             }
             if (cps > highestCPS) {
                 highestCPS = cps;
-                if (currentUser && currentUser.emailVerified) {
+                if (currentUser) {
                     db.collection("users").doc(currentUser.uid).update({ highestCPS: cps });
                 }
             }
@@ -897,11 +893,6 @@
                 document.getElementById('click-message').style.display = 'block';
                 return;
             }
-            if (!currentUser.emailVerified) {
-                showErrorPopup("Please verify your email to start clicking!");
-                return;
-            }
-    
             localClicks += 1;
             clickBuffer += 1;
             clickTimestamps.push(Date.now());
@@ -936,7 +927,7 @@
         }
     
         function syncClicks() {
-            if (clickBuffer > 0 && currentUser && currentUser.emailVerified) {
+            if (clickBuffer > 0 && currentUser) {
                 const userRef = db.collection("users").doc(currentUser.uid);
                 userRef.update({
                     clicks: firebase.firestore.FieldValue.increment(clickBuffer)
@@ -956,61 +947,45 @@
                 });
             }).catch(err => console.error("Error deleting account:", err));
         }
-
+    
         auth.onAuthStateChanged((user) => {
-    console.log("Auth State Changed:", user ? user.uid : "No user", user ? user.emailVerified : "N/A");
-    if (user) {
-        user.getIdToken().then(token => console.log("ID Token:", token)).catch(err => console.error("ID Token Error:", err));
-        currentUser = user;
-        if (currentUser.emailVerified) {
-            console.log("User is verified, loading data...");
-            loadUserData();
-            startProfileListener();
-            startLeaderboardListener();
-            document.getElementById('login-btn').style.display = 'none';
-            document.getElementById('signup-btn').style.display = 'none';
-            document.getElementById('logout-btn').style.display = 'inline-block';
-            document.getElementById('click-btn').disabled = false;
-            document.getElementById('click-message').style.display = 'none';
-            document.getElementById('edit-profile-btn').style.display = 'block';
-            document.getElementById('delete-account-btn').style.display = 'block';
-        } else {
-            console.log("User is not verified.");
-            document.getElementById('click-btn').disabled = true;
-            document.getElementById('click-message').innerText = "Please verify your email to start clicking!";
-            document.getElementById('click-message').style.display = 'block';
-            document.getElementById('login-btn').style.display = 'none';
-            document.getElementById('signup-btn').style.display = 'none';
-            document.getElementById('logout-btn').style.display = 'inline-block';
-            document.getElementById('edit-profile-btn').style.display = 'none';
-            document.getElementById('delete-account-btn').style.display = 'block';
-        }
-    } else {
-        console.log("No user logged in.");
-        if (leaderboardListener) leaderboardListener();
-        if (profileListener) profileListener();
-        currentUser = null;
-        localClicks = 0;
-        clickBuffer = 0;
-        document.getElementById('click-count').innerText = 'Clicks: 0';
-        document.getElementById('user-email').innerText = 'Not Logged In';
-        document.getElementById('bio').innerText = 'No bio yet';
-        document.getElementById('country').innerText = 'Not specified';
-        document.getElementById('join-date').innerText = '';
-        document.getElementById('profile-picture').style.display = 'none';
-        document.getElementById('chance-of-winning').innerText = 'Chance of Winning: 0%';
-        document.getElementById('highest-cps').innerText = 'Highest CPS: 0';
-        document.getElementById('login-btn').style.display = 'inline-block';
-        document.getElementById('signup-btn').style.display = 'inline-block';
-        document.getElementById('logout-btn').style.display = 'none';
-        document.getElementById('edit-profile-btn').style.display = 'none';
-        document.getElementById('delete-account-btn').style.display = 'none';
-        document.getElementById('click-btn').disabled = true;
-        document.getElementById('click-message').style.display = 'block';
-        document.getElementById('leaderboard').innerHTML = '';
-    }
-    });
-
+            if (user) {
+                currentUser = user;
+                loadUserData();
+                startProfileListener();
+                startLeaderboardListener();
+                document.getElementById('login-btn').style.display = 'none';
+                document.getElementById('signup-btn').style.display = 'none';
+                document.getElementById('logout-btn').style.display = 'inline-block';
+                document.getElementById('click-btn').disabled = false;
+                document.getElementById('click-message').style.display = 'none';
+                document.getElementById('edit-profile-btn').style.display = 'block';
+                document.getElementById('delete-account-btn').style.display = 'block';
+            } else {
+                if (leaderboardListener) leaderboardListener();
+                if (profileListener) profileListener();
+                currentUser = null;
+                localClicks = 0;
+                clickBuffer = 0;
+                document.getElementById('click-count').innerText = 'Clicks: 0';
+                document.getElementById('user-email').innerText = 'Not Logged In';
+                document.getElementById('bio').innerText = 'No bio yet';
+                document.getElementById('country').innerText = 'Not specified';
+                document.getElementById('join-date').innerText = '';
+                document.getElementById('profile-picture').style.display = 'none';
+                document.getElementById('chance-of-winning').innerText = 'Chance of Winning: 0%';
+                document.getElementById('highest-cps').innerText = 'Highest CPS: 0';
+                document.getElementById('login-btn').style.display = 'inline-block';
+                document.getElementById('signup-btn').style.display = 'inline-block';
+                document.getElementById('logout-btn').style.display = 'none';
+                document.getElementById('edit-profile-btn').style.display = 'none';
+                document.getElementById('delete-account-btn').style.display = 'none';
+                document.getElementById('click-btn').disabled = true;
+                document.getElementById('click-message').style.display = 'block';
+                document.getElementById('leaderboard').innerHTML = '';
+            }
+        });
+    
         initSpaceBackground();
     </script>
 </body>
