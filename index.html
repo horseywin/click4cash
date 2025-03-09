@@ -260,6 +260,11 @@
             z-index: 5;
             display: none;
         }
+        #edit-profile-btn {
+            display: block;
+            margin: 0 auto; /* Center the button */
+            padding: 10px 20px; /* Match login button size */
+        }
     </style>
 </head>
 <body>
@@ -328,6 +333,7 @@
     <div id="signup-popup">
         <h2>Sign Up</h2>
         <form onsubmit="signUp(event)">
+            <input type="text" id="signup-username" placeholder="Username (max 12 chars)" maxlength="12" required><br>
             <input type="email" id="signup-email" placeholder="Email" required><br>
             <input type="password" id="signup-password" placeholder="Password" required><br>
             <p><small>By signing up, you agree to receive an email confirmation if you win!</small></p>
@@ -456,7 +462,7 @@
                         if (userData.clicks !== undefined) {
                             leaderboardHTML += `<div class="leaderboard-item" data-user-id="${doc.id}" onclick="showUserProfile('${doc.id}')">
                                 <img src="${userData.profilePictureUrl || defaultProfilePic}" alt="Profile">
-                                <span>${userData.email} - ${userData.clicks} clicks</span>
+                                <span>${userData.username} - ${userData.clicks} clicks</span>
                             </div>`;
                             totalClicks += userData.clicks;
                         }
@@ -476,7 +482,7 @@
                         if (userData.clicks !== undefined) {
                             leaderboardHTML += `<div class="leaderboard-item" data-user-id="${doc.id}" onclick="showUserProfile('${doc.id}')">
                                 <img src="${userData.profilePictureUrl || defaultProfilePic}" alt="Profile">
-                                <span>${userData.email} - ${userData.clicks} clicks</span>
+                                <span>${userData.username} - ${userData.clicks} clicks</span>
                             </div>`;
                         }
                     });
@@ -535,8 +541,8 @@
             document.getElementById('overlay').style.display = 'none';
         }
 
-        function showWelcomePopup(email) {
-            document.getElementById('welcome-message').innerText = `Welcome, ${email}! You could win 100% of the weekly ad revenue!`;
+        function showWelcomePopup(username) {
+            document.getElementById('welcome-message').innerText = `Welcome, ${username}! You could win 100% of the weekly ad revenue!`;
             document.getElementById('welcome-popup').style.display = 'block';
             document.getElementById('overlay').style.display = 'block';
         }
@@ -563,7 +569,7 @@
                 if (doc.exists) {
                     const data = doc.data();
                     document.getElementById('popup-profile-picture').src = data.profilePictureUrl || defaultProfilePic;
-                    document.getElementById('popup-user-email').innerText = data.email;
+                    document.getElementById('popup-user-email').innerText = `Username: ${data.username}\nEmail: ${data.email}`;
                     document.getElementById('popup-bio').innerText = data.bio || "No bio yet";
                     document.getElementById('popup-country').innerText = data.country || "Not specified";
                     document.getElementById('popup-join-date').innerText = `Joined: ${new Date(data.joinDate).toLocaleDateString()}`;
@@ -621,11 +627,11 @@
                 })
                 .catch((error) => {
                     console.error("Login error:", error);
-                    let friendlyMessage = "Something went wrong. Please check your email or password and try again.";
+                    let friendlyMessage = "Login failed. Please try again.";
                     if (error.code === 'auth/user-not-found') {
                         friendlyMessage = "No account found with this email. Please sign up!";
-                    } else if (error.code === 'auth/wrong-password') {
-                        friendlyMessage = "Incorrect password. Please try again.";
+                    } else if (error.code === 'auth/wrong-password' || error.message.includes("INVALID_LOGIN_CREDENTIALS")) {
+                        friendlyMessage = "Incorrect password. Please check and try again.";
                     }
                     showErrorPopup(friendlyMessage);
                 });
@@ -633,14 +639,21 @@
 
         function signUp(event) {
             event.preventDefault();
+            const username = document.getElementById('signup-username').value.trim();
             const email = document.getElementById('signup-email').value;
             const password = document.getElementById('signup-password').value;
+
+            if (username.length === 0) {
+                showErrorPopup("Please enter a username!");
+                return;
+            }
 
             auth.createUserWithEmailAndPassword(email, password)
                 .then((userCredential) => {
                     currentUser = userCredential.user;
                     const userRef = db.collection("users").doc(currentUser.uid);
                     userRef.set({
+                        username: username,
                         email: currentUser.email,
                         clicks: 0,
                         joinDate: new Date().toISOString(),
@@ -651,7 +664,7 @@
                     }).then(() => {
                         updateLeaderboard();
                         hideSignUp();
-                        showWelcomePopup(currentUser.email);
+                        showWelcomePopup(username);
                     }).catch((error) => console.error("Error creating user document: ", error));
                 })
                 .catch((error) => {
@@ -703,7 +716,7 @@
                         } else {
                             document.getElementById('profile-picture').style.display = 'none';
                         }
-                        document.getElementById('edit-profile-btn').style.display = 'block'; // Ensure button shows
+                        document.getElementById('edit-profile-btn').style.display = 'block';
                     }
                 }).catch((error) => console.error("Error loading user data: ", error));
             }
@@ -824,6 +837,7 @@
                 document.getElementById('signup-btn').style.display = 'inline-block';
                 document.getElementById('logout-btn').style.display = 'none';
                 document.getElementById('click-btn').disabled = true;
+                document.getElementById('edit-profile-btn').style.display = 'none';
             }
         });
 
