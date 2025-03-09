@@ -467,42 +467,63 @@
         }
 
         function updateLeaderboard() {
+            const leaderboard = document.getElementById('leaderboard');
+            leaderboard.innerHTML = ''; // Clear existing content
             db.collection("users").orderBy("clicks", "desc").limit(5).get()
                 .then((snapshot) => {
-                    let leaderboardHTML = '';
                     totalClicks = 0;
                     snapshot.forEach(doc => {
                         const userData = doc.data();
                         if (userData.clicks !== undefined) {
-                            leaderboardHTML += `
-                                <div class="leaderboard-item" data-user-id="${doc.id}" onclick="showUserProfile('${doc.id}')">
-                                    <img src="${userData.profilePictureUrl || defaultProfilePic}" alt="Profile">
-                                    <span>${userData.username} - ${userData.clicks} clicks</span>
-                                </div>`;
+                            const item = document.createElement('div');
+                            item.className = 'leaderboard-item';
+                            item.dataset.userId = doc.id;
+                            item.onclick = () => showUserProfile(doc.id);
+
+                            const img = document.createElement('img');
+                            img.src = userData.profilePictureUrl || defaultProfilePic;
+                            img.alt = 'Profile';
+
+                            const span = document.createElement('span');
+                            span.textContent = `${userData.username} - ${userData.clicks} clicks`;
+
+                            item.appendChild(img);
+                            item.appendChild(span);
+                            leaderboard.appendChild(item);
+
                             totalClicks += userData.clicks;
                         }
                     });
-                    document.getElementById('leaderboard').innerHTML = leaderboardHTML;
                     updateChanceOfWinning();
                 })
                 .catch(err => console.error("Error fetching leaderboard: ", err));
         }
 
         function showLeaderboardPopup() {
+            const fullLeaderboard = document.getElementById('full-leaderboard');
+            fullLeaderboard.innerHTML = ''; // Clear existing content
             db.collection("users").orderBy("clicks", "desc").get()
                 .then((snapshot) => {
-                    let leaderboardHTML = '';
                     snapshot.forEach(doc => {
                         const userData = doc.data();
                         if (userData.clicks !== undefined) {
-                            leaderboardHTML += `
-                                <div class="leaderboard-item" data-user-id="${doc.id}" onclick="showUserProfile('${doc.id}')">
-                                    <img src="${userData.profilePictureUrl || defaultProfilePic}" alt="Profile">
-                                    <span>${userData.username} - ${userData.clicks} clicks</span>
-                                </div>`;
+                            const item = document.createElement('div');
+                            item.className = 'leaderboard-item';
+                            item.dataset.userId = doc.id;
+                            item.onclick = () => showUserProfile(doc.id);
+
+                            const img = document.createElement('img');
+                            img.src = userData.profilePictureUrl || defaultProfilePic;
+                            img.alt = 'Profile';
+
+                            const span = document.createElement('span');
+                            span.textContent = `${userData.username} - ${userData.clicks} clicks`;
+
+                            item.appendChild(img);
+                            item.appendChild(span);
+                            fullLeaderboard.appendChild(item);
                         }
                     });
-                    document.getElementById('full-leaderboard').innerHTML = leaderboardHTML;
                     document.getElementById('leaderboard-popup').style.display = 'block';
                     document.getElementById('overlay').style.display = 'block';
                 })
@@ -736,7 +757,7 @@
                         }
                         document.getElementById('edit-profile-btn').style.display = 'block';
                         document.getElementById('user-email').innerText = data.emailPublic ? data.email : data.username;
-                        document.getElementById('click-message').style.display = 'none'; // Hide message on login
+                        document.getElementById('click-message').style.display = 'none';
                     }
                 }).catch((error) => console.error("Error loading user data: ", error));
             }
