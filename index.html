@@ -4,20 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google-site-verification" content="s2pF5uwW7vjbQJIBeFpBJlhuFCZrkTxMiVEgoSGQlZA" />
-    <title>Click4Cash - Space Edition</title>
+    <meta name="description" content="Click4Cash: Click to enter a weekly lucky draw and win 100% of the ad revenue!">
+    <meta name="keywords" content="Click4Cash, click game, win cash, free contest, ad revenue">
+    <meta name="author" content="horseywin">
+    <meta property="og:title" content="Click4Cash">
+    <meta property="og:description" content="Click to win 100% of weekly ad revenue in this fun, free contest!">
+    <meta property="og:url" content="https://horseywin.github.io/click4cash/">
+    <meta property="og:type" content="website">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><path d='M2 2l14 14-4 4-6-6-4-4z' fill='%23000'/><path d='M2 2l14 14-4 4-6-6-4-4z' stroke='%23fff' stroke-width='2' fill='none'/></svg>" type="image/svg+xml">
+    <title>Click4Cash</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6598513151197899"
-    
-     crossorigin="anonymous"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app-check.js"></script>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6598513151197899" crossorigin="anonymous"></script>
     <style>
-        /* Basic reset and space theme */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
             font-family: 'Arial', sans-serif;
+            cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M2 2l14 14-4 4-6-6-4-4z" fill="%23000"/><path d="M2 2l14 14-4 4-6-6-4-4z" stroke="%23fff" stroke-width="2" fill="none"/></svg>') 2 2, auto;
         }
         body {
             background: #000;
@@ -51,6 +59,7 @@
         button:hover {
             background: #444;
             transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
         }
         h1 {
             font-size: 48px;
@@ -104,6 +113,13 @@
             margin-bottom: 10px;
             color: #ccc;
         }
+        #profile-picture, #popup-profile-picture {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin: 0 auto 10px;
+            display: block;
+        }
         .leaderboard-item {
             padding: 15px;
             border-radius: 8px;
@@ -112,16 +128,26 @@
             text-align: left;
             font-size: 16px;
             transition: background 0.3s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        .leaderboard-item img {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin-right: 10px;
         }
         .leaderboard-item:hover {
             background: #666;
         }
-        /* Animations */
         @keyframes slideUp {
             0% { transform: translateY(30px); opacity: 0; }
             100% { transform: translateY(0); opacity: 1; }
         }
-        /* Space background and stars */
         .space-background {
             position: absolute;
             top: 0;
@@ -142,7 +168,6 @@
             0% { transform: translateY(-100vh); }
             100% { transform: translateY(100vh); }
         }
-        /* Particle effects */
         .particle {
             position: absolute;
             background: radial-gradient(circle, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0));
@@ -155,8 +180,7 @@
             0% { opacity: 1; transform: scale(0.1); }
             100% { opacity: 0; transform: scale(1.5); }
         }
-        /* Popup styles */
-        #login-popup, #signup-popup, #welcome-popup, #leaderboard-popup, #rules-popup {
+        #login-popup, #signup-popup, #welcome-popup, #leaderboard-popup, #rules-popup, #error-popup, #user-profile-popup, #edit-profile-popup {
             display: none;
             position: fixed;
             top: 50%;
@@ -172,11 +196,14 @@
             width: 90%;
             max-width: 400px;
         }
-        #login-popup h2, #signup-popup h2, #welcome-popup h2, #leaderboard-popup h2, #rules-popup h2 {
+        #edit-profile-popup {
+            text-align: left;
+        }
+        #login-popup h2, #signup-popup h2, #welcome-popup h2, #leaderboard-popup h2, #rules-popup h2, #error-popup h2, #user-profile-popup h2, #edit-profile-popup h2 {
             margin-bottom: 20px;
             font-size: 24px;
         }
-        #login-popup input, #signup-popup input {
+        #login-popup input, #signup-popup input, #edit-profile-popup textarea, #edit-profile-popup select, #edit-profile-popup input[type="file"] {
             width: 100%;
             padding: 10px;
             margin: 10px 0;
@@ -186,7 +213,11 @@
             color: #fff;
             font-size: 16px;
         }
-        #login-popup button, #signup-popup button, #welcome-popup button, #leaderboard-popup button, #rules-popup button {
+        #edit-profile-popup label {
+            display: block;
+            margin-top: 10px;
+        }
+        #login-popup button, #signup-popup button, #welcome-popup button, #leaderboard-popup button, #rules-popup button, #error-popup button, #user-profile-popup button, #edit-profile-popup button {
             background: #0084ff;
             color: #fff;
             border: none;
@@ -195,23 +226,26 @@
             cursor: pointer;
             font-size: 16px;
             margin-top: 10px;
-            transition: background 0.3s ease;
+            transition: background 0.3s ease, transform 0.3s, box-shadow 0.3s;
         }
-        #login-popup button:hover, #signup-popup button:hover, #welcome-popup button:hover, #leaderboard-popup button:hover, #rules-popup button:hover {
+        #login-popup button:hover, #signup-popup button:hover, #welcome-popup button:hover, #leaderboard-popup button:hover, #rules-popup button:hover, #error-popup button:hover, #user-profile-popup button:hover, #edit-profile-popup button:hover {
             background: #00d4ff;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
         }
-        #login-popup button[type="submit"], #signup-popup button[type="submit"] {
+        #login-popup button[type="submit"], #signup-popup button[type="submit"], #edit-profile-popup button[type="submit"] {
             background: #ff1a75;
         }
-        #login-popup button[type="submit"]:hover, #signup-popup button[type="submit"]:hover {
+        #login-popup button[type="submit"]:hover, #signup-popup button[type="submit"]:hover, #edit-profile-popup button[type="submit"]:hover {
             background: #ff69b3;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
         }
-        #welcome-popup p, #rules-popup p {
+        #welcome-popup p, #rules-popup p, #error-popup p, #user-profile-popup p {
             margin-bottom: 20px;
             font-size: 18px;
             color: #ccc;
         }
-        /* Overlay style */
         #overlay {
             position: absolute;
             top: 0;
@@ -231,14 +265,14 @@
         <button onclick="logout()" id="logout-btn" style="display: none;">Logout</button>
     </div>
 
-    <h1>Click4Cash - Space Edition</h1>
+    <h1>Click4Cash</h1>
     <button id="click-btn" onclick="incrementClicks()">Click Me!</button>
     <p id="click-message" style="color: red; display: none;">Please sign in to start clicking!</p>
 
     <div class="container">
         <div class="card">
-            <h3>Your Clicks</h3>
-            <p id="click-count">0</p>
+            <h3>About</h3>
+            <p>Click4Cash is a fun, free game where every click enters you into a weekly lucky draw to win 100% of the ad revenue!</p>
         </div>
         <div class="card">
             <h3>Leaderboard</h3>
@@ -247,35 +281,35 @@
         </div>
         <div class="card">
             <h3>Your Profile</h3>
+            <img id="profile-picture" src="" alt="Profile Picture" style="display: none;">
             <p id="user-email">Not Logged In</p>
             <p id="join-date"></p>
-            <p id="playtime"></p>
+            <p id="bio">No bio yet</p>
+            <p id="country">Not specified</p>
+            <p id="click-count">Clicks: 0</p>
             <p id="chance-of-winning">Chance of Winning: 0%</p>
+            <button id="edit-profile-btn" onclick="showEditProfilePopup()" style="display: none;">Edit Profile</button>
         </div>
     </div>
 
-    <!-- Welcome Popup -->
     <div id="welcome-popup">
         <h2>Welcome to Click4Cash!</h2>
-        <p>Thank you for signing up. You will earn 50% of the daily ad revenue if you win!</p>
+        <p id="welcome-message"></p>
         <button onclick="closeWelcomePopup()">Got It!</button>
     </div>
 
-    <!-- Rules Popup -->
     <div id="rules-popup">
         <h2>How Click4Cash Works</h2>
-        <p>Click the button as many times as you can to increase your chances of winning. Each click is an entry into the daily lucky draw. The more you click, the higher your chance of winning! The winner receives 50% of the daily ad revenue.</p>
+        <p>Click the button as many times as you can to increase your chances of winning. Each click is an entry into the weekly lucky draw. The more you click, the higher your chance of winning! The winner receives 100% of the weekly ad revenue.</p>
         <button onclick="closeRulesPopup()">Got It!</button>
     </div>
 
-    <!-- Leaderboard Popup -->
     <div id="leaderboard-popup">
         <h2>Full Leaderboard</h2>
         <div id="full-leaderboard"></div>
         <button onclick="hideLeaderboardPopup()">Close</button>
     </div>
 
-    <!-- Login Popup -->
     <div id="overlay"></div>
     <div id="login-popup">
         <h2>Sign In</h2>
@@ -287,7 +321,6 @@
         <button onclick="hideLogin()">Cancel</button>
     </div>
 
-    <!-- Sign Up Popup -->
     <div id="signup-popup">
         <h2>Sign Up</h2>
         <form onsubmit="signUp(event)">
@@ -297,6 +330,43 @@
             <button type="submit">Sign Up</button>
         </form>
         <button onclick="hideSignUp()">Cancel</button>
+    </div>
+
+    <div id="error-popup">
+        <h2>Oops!</h2>
+        <p id="error-message">Something went wrong. Please try again.</p>
+        <button onclick="hideErrorPopup()">Okay</button>
+    </div>
+
+    <div id="user-profile-popup">
+        <h2>User Profile</h2>
+        <img id="popup-profile-picture" src="" alt="Profile Picture">
+        <p id="popup-user-email"></p>
+        <p id="popup-bio"></p>
+        <p id="popup-country"></p>
+        <p id="popup-join-date"></p>
+        <p id="popup-clicks"></p>
+        <button onclick="hideUserProfilePopup()">Close</button>
+    </div>
+
+    <div id="edit-profile-popup">
+        <h2>Edit Profile</h2>
+        <form onsubmit="saveProfile(event)">
+            <label for="bio-input">Bio:</label>
+            <textarea id="bio-input" rows="3"></textarea>
+            <label for="country-input">Country:</label>
+            <select id="country-input">
+                <option value="">Select Country</option>
+                <option value="USA">USA</option>
+                <option value="Canada">Canada</option>
+                <option value="UK">UK</option>
+                <option value="Australia">Australia</option>
+            </select>
+            <label for="profile-picture-input">Profile Picture:</label>
+            <input type="file" id="profile-picture-input" accept="image/*">
+            <button type="submit">Save</button>
+        </form>
+        <button onclick="hideEditProfilePopup()">Cancel</button>
     </div>
 
     <div class="space-background" id="space-background"></div>
@@ -311,51 +381,53 @@
             appId: "1:689145020485:web:458d083ec5bca7d8b3e32c"
         };
         firebase.initializeApp(firebaseConfig);
+        const appCheck = firebase.appCheck();
+        appCheck.activate(
+            '6LdQq-4qAAAAABzNzVlhJzLlxbK3zh6M5NiHY7cf', // Your reCAPTCHA v3 Site Key
+            true
+        );
         const auth = firebase.auth();
         const db = firebase.firestore();
+        const storage = firebase.storage(); // Still included but minimally used
 
         let currentUser = null;
         let totalClicks = 0;
         let localClicks = 0;
         let clickBuffer = 0;
         let syncTimeout = null;
-        let baseStarSpeed = 20; // Base speed in seconds for star animation
+        let baseStarSpeed = 20;
         let clickSpeedBoost = false;
+        const defaultProfilePic = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="%23ccc"/><path d="M12 12c2.67 0 4 1.33 4 4H8c0-2.67 1.33-4 4-4z" fill="%23fff"/></svg>';
 
-        // Show rules popup on first visit
         if (!localStorage.getItem('visited')) {
             showRulesPopup();
             localStorage.setItem('visited', 'true');
         }
 
-        // Initialize space background with stars
         function initSpaceBackground() {
             const spaceBackground = document.getElementById('space-background');
-            const starCount = 100; // Number of stars
+            const starCount = 100;
             for (let i = 0; i < starCount; i++) {
                 const star = document.createElement('div');
                 star.classList.add('star');
                 star.style.width = `${Math.random() * 3 + 1}px`;
                 star.style.height = star.style.width;
                 star.style.left = `${Math.random() * 100}%`;
-                star.style.top = `${Math.random() * -100}vh`; // Start above the screen
-                star.style.animationDuration = `${baseStarSpeed + Math.random() * 10}s`; // Randomize speed slightly
+                star.style.top = `${Math.random() * -100}vh`;
+                star.style.animationDuration = `${baseStarSpeed + Math.random() * 10}s`;
                 spaceBackground.appendChild(star);
             }
         }
 
-        // Update star speed dynamically
         function updateStarSpeed(faster = false) {
             const stars = document.querySelectorAll('.star');
-            const newSpeed = faster ? baseStarSpeed / 2 : baseStarSpeed; // Halve duration when clicking
+            const newSpeed = faster ? baseStarSpeed / 2 : baseStarSpeed;
             stars.forEach(star => {
                 star.style.animationDuration = `${newSpeed + Math.random() * 5}s`;
             });
         }
 
-        // Create click particles
         function createParticles(x, y) {
-            const clickBtn = document.getElementById('click-btn');
             for (let i = 0; i < 10; i++) {
                 const particle = document.createElement('div');
                 particle.classList.add('particle');
@@ -368,32 +440,56 @@
                 const velocity = Math.random() * 100 + 50;
                 particle.style.transform = `translate(${Math.cos(angle) * velocity}px, ${Math.sin(angle) * velocity}px)`;
                 document.body.appendChild(particle);
-                setTimeout(() => particle.remove(), 1000); // Remove after animation
+                setTimeout(() => particle.remove(), 1000);
             }
         }
 
-        // Fetch leaderboard data and update
         function updateLeaderboard() {
-            db.collection("users").orderBy("clicks", "desc").get()
+            db.collection("users").orderBy("clicks", "desc").limit(5).get()
                 .then((snapshot) => {
                     let leaderboardHTML = '';
                     totalClicks = 0;
                     snapshot.forEach(doc => {
                         const userData = doc.data();
                         if (userData.clicks !== undefined) {
-                            leaderboardHTML += `<div class="leaderboard-item">${userData.email} - ${userData.clicks} clicks</div>`;
+                            leaderboardHTML += `<div class="leaderboard-item" data-user-id="${doc.id}" onclick="showUserProfile('${doc.id}')">
+                                <img src="${userData.profilePictureUrl || defaultProfilePic}" alt="Profile">
+                                ${userData.email} - ${userData.clicks} clicks
+                            </div>`;
                             totalClicks += userData.clicks;
                         }
                     });
                     document.getElementById('leaderboard').innerHTML = leaderboardHTML;
                     updateChanceOfWinning();
                 })
-                .catch(err => {
-                    console.error("Error fetching leaderboard: ", err);
-                });
+                .catch(err => console.error("Error fetching leaderboard: ", err));
         }
 
-        // Update chance of winning
+        function showLeaderboardPopup() {
+            db.collection("users").orderBy("clicks", "desc").get()
+                .then((snapshot) => {
+                    let leaderboardHTML = '';
+                    snapshot.forEach(doc => {
+                        const userData = doc.data();
+                        if (userData.clicks !== undefined) {
+                            leaderboardHTML += `<div class="leaderboard-item" data-user-id="${doc.id}" onclick="showUserProfile('${doc.id}')">
+                                <img src="${userData.profilePictureUrl || defaultProfilePic}" alt="Profile">
+                                ${userData.email} - ${userData.clicks} clicks
+                            </div>`;
+                        }
+                    });
+                    document.getElementById('full-leaderboard').innerHTML = leaderboardHTML;
+                    document.getElementById('leaderboard-popup').style.display = 'block';
+                    document.getElementById('overlay').style.display = 'block';
+                })
+                .catch(err => console.error("Error fetching leaderboard: ", err));
+        }
+
+        function hideLeaderboardPopup() {
+            document.getElementById('leaderboard-popup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
         function updateChanceOfWinning() {
             if (currentUser) {
                 const userRef = db.collection("users").doc(currentUser.uid);
@@ -407,81 +503,101 @@
             }
         }
 
-        // Show full leaderboard popup
-        function showLeaderboardPopup() {
-            db.collection("users").orderBy("clicks", "desc").get()
-                .then((snapshot) => {
-                    let leaderboardHTML = '';
-                    snapshot.forEach(doc => {
-                        const userData = doc.data();
-                        if (userData.clicks !== undefined) {
-                            leaderboardHTML += `<div class="leaderboard-item">${userData.email} - ${userData.clicks} clicks</div>`;
-                        }
-                    });
-                    document.getElementById('full-leaderboard').innerHTML = leaderboardHTML;
-                    document.getElementById('leaderboard-popup').style.display = 'block';
-                    document.getElementById('overlay').style.display = 'block';
-                })
-                .catch(err => {
-                    console.error("Error fetching leaderboard: ", err);
-                });
-        }
-
-        // Hide leaderboard popup
-        function hideLeaderboardPopup() {
-            document.getElementById('leaderboard-popup').style.display = 'none';
-            document.getElementById('overlay').style.display = 'none';
-        }
-
-        // Show rules popup
         function showRulesPopup() {
             document.getElementById('rules-popup').style.display = 'block';
             document.getElementById('overlay').style.display = 'block';
         }
 
-        // Hide rules popup
         function closeRulesPopup() {
             document.getElementById('rules-popup').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
         }
 
-        // Show login popup
         function showLogin() {
             document.getElementById('login-popup').style.display = 'block';
             document.getElementById('overlay').style.display = 'block';
         }
 
-        // Hide login popup
         function hideLogin() {
             document.getElementById('login-popup').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
         }
 
-        // Show signup popup
         function showSignUp() {
             document.getElementById('signup-popup').style.display = 'block';
             document.getElementById('overlay').style.display = 'block';
         }
 
-        // Hide signup popup
         function hideSignUp() {
             document.getElementById('signup-popup').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
         }
 
-        // Show welcome popup
-        function showWelcomePopup() {
+        function showWelcomePopup(email) {
+            document.getElementById('welcome-message').innerText = `Welcome, ${email}! You could win 100% of the weekly ad revenue!`;
             document.getElementById('welcome-popup').style.display = 'block';
             document.getElementById('overlay').style.display = 'block';
         }
 
-        // Hide welcome popup
         function closeWelcomePopup() {
             document.getElementById('welcome-popup').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
         }
 
-        // Login function
+        function showErrorPopup(message) {
+            document.getElementById('error-message').innerText = message;
+            document.getElementById('error-popup').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        function hideErrorPopup() {
+            document.getElementById('error-popup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        function showUserProfile(userId) {
+            const userRef = db.collection("users").doc(userId);
+            userRef.get().then((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    document.getElementById('popup-profile-picture').src = data.profilePictureUrl || defaultProfilePic;
+                    document.getElementById('popup-user-email').innerText = data.email;
+                    document.getElementById('popup-bio').innerText = data.bio || "No bio yet";
+                    document.getElementById('popup-country').innerText = data.country || "Not specified";
+                    document.getElementById('popup-join-date').innerText = `Joined: ${new Date(data.joinDate).toLocaleDateString()}`;
+                    document.getElementById('popup-clicks').innerText = `Clicks: ${data.clicks || 0}`;
+                    document.getElementById('user-profile-popup').style.display = 'block';
+                    document.getElementById('overlay').style.display = 'block';
+                }
+            }).catch((error) => console.error("Error fetching user profile: ", error));
+        }
+
+        function hideUserProfilePopup() {
+            document.getElementById('user-profile-popup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        function showEditProfilePopup() {
+            if (currentUser) {
+                const userRef = db.collection("users").doc(currentUser.uid);
+                userRef.get().then((doc) => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        document.getElementById('bio-input').value = data.bio || "";
+                        document.getElementById('country-input').value = data.country || "";
+                        document.getElementById('profile-picture-input').value = "";
+                        document.getElementById('edit-profile-popup').style.display = 'block';
+                        document.getElementById('overlay').style.display = 'block';
+                    }
+                }).catch((error) => console.error("Error loading profile data: ", error));
+            }
+        }
+
+        function hideEditProfilePopup() {
+            document.getElementById('edit-profile-popup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
         function login(event) {
             event.preventDefault();
             const email = document.getElementById('email').value;
@@ -501,11 +617,16 @@
                     document.getElementById('user-email').innerText = currentUser.email;
                 })
                 .catch((error) => {
-                    alert("Login failed: " + error.message);
+                    let friendlyMessage = "Something went wrong. Please check your email or password and try again.";
+                    if (error.code === 'auth/user-not-found') {
+                        friendlyMessage = "No account found with this email. Please sign up!";
+                    } else if (error.code === 'auth/wrong-password') {
+                        friendlyMessage = "Incorrect password. Please try again.";
+                    }
+                    showErrorPopup(friendlyMessage);
                 });
         }
 
-        // Signup function
         function signUp(event) {
             event.preventDefault();
             const email = document.getElementById('signup-email').value;
@@ -514,66 +635,115 @@
             auth.createUserWithEmailAndPassword(email, password)
                 .then((userCredential) => {
                     currentUser = userCredential.user;
-
                     const userRef = db.collection("users").doc(currentUser.uid);
                     userRef.set({
                         email: currentUser.email,
                         clicks: 0,
                         joinDate: new Date().toISOString(),
-                        playtime: 0
+                        playtime: 0,
+                        bio: "",
+                        profilePictureUrl: "",
+                        country: ""
                     }).then(() => {
                         updateLeaderboard();
                         hideSignUp();
-                        showWelcomePopup();
-                        document.getElementById('login-btn').style.display = 'none';
-                        document.getElementById('signup-btn').style.display = 'none';
-                        document.getElementById('logout-btn').style.display = 'inline-block';
-                        document.getElementById('user-email').innerText = currentUser.email;
-                    }).catch((error) => {
-                        console.error("Error creating user document: ", error);
-                    });
+                        showWelcomePopup(currentUser.email);
+                    }).catch((error) => console.error("Error creating user document: ", error));
                 })
                 .catch((error) => {
-                    alert("Sign Up failed: " + error.message);
+                    let friendlyMessage = "Sign-up failed. Please try again.";
+                    if (error.code === 'auth/email-already-in-use') {
+                        friendlyMessage = "This email is already in use. Try logging in!";
+                    } else if (error.code === 'auth/weak-password') {
+                        friendlyMessage = "Password too weak. Use at least 6 characters.";
+                    }
+                    showErrorPopup(friendlyMessage);
                 });
         }
 
-        // Logout function
         function logout() {
             auth.signOut().then(() => {
                 currentUser = null;
                 localClicks = 0;
                 clickBuffer = 0;
-                document.getElementById('click-count').innerText = '0';
+                document.getElementById('click-count').innerText = 'Clicks: 0';
                 document.getElementById('user-email').innerText = 'Not Logged In';
+                document.getElementById('bio').innerText = 'No bio yet';
+                document.getElementById('country').innerText = 'Not specified';
+                document.getElementById('join-date').innerText = '';
+                document.getElementById('profile-picture').style.display = 'none';
                 document.getElementById('chance-of-winning').innerText = 'Chance of Winning: 0%';
                 document.getElementById('login-btn').style.display = 'inline-block';
                 document.getElementById('signup-btn').style.display = 'inline-block';
                 document.getElementById('logout-btn').style.display = 'none';
+                document.getElementById('edit-profile-btn').style.display = 'none';
                 document.getElementById('click-message').style.display = 'block';
                 document.getElementById('click-btn').disabled = true;
-            }).catch((error) => {
-                console.error("Logout failed: ", error);
-            });
+            }).catch((error) => console.error("Logout failed: ", error));
         }
 
-        // Load user data on login
         function loadUserData() {
             if (currentUser) {
                 const userRef = db.collection("users").doc(currentUser.uid);
                 userRef.get().then((doc) => {
                     if (doc.exists) {
-                        localClicks = doc.data().clicks || 0;
-                        document.getElementById('click-count').innerText = localClicks;
-                        document.getElementById('join-date').innerText = `Joined: ${new Date(doc.data().joinDate).toLocaleDateString()}`;
+                        const data = doc.data();
+                        localClicks = data.clicks || 0;
+                        document.getElementById('click-count').innerText = `Clicks: ${localClicks}`;
+                        document.getElementById('join-date').innerText = `Joined: ${new Date(data.joinDate).toLocaleDateString()}`;
+                        document.getElementById('bio').innerText = data.bio || "No bio yet";
+                        document.getElementById('country').innerText = data.country || "Not specified";
+                        if (data.profilePictureUrl) {
+                            document.getElementById('profile-picture').src = data.profilePictureUrl;
+                            document.getElementById('profile-picture').style.display = 'block';
+                        } else {
+                            document.getElementById('profile-picture').style.display = 'none';
+                        }
+                        document.getElementById('edit-profile-btn').style.display = 'block';
                     }
-                }).catch((error) => {
-                    console.error("Error loading user data: ", error);
-                });
+                }).catch((error) => console.error("Error loading user data: ", error));
             }
         }
 
-        // Sync clicks with Firebase
+        function saveProfile(event) {
+            event.preventDefault();
+            if (!currentUser) return;
+
+            const bio = document.getElementById('bio-input').value;
+            const country = document.getElementById('country-input').value;
+            const file = document.getElementById('profile-picture-input').files[0];
+            const userRef = db.collection("users").doc(currentUser.uid);
+
+            if (file) {
+                if (file.size > 32 * 1024 * 1024) { // 32 MB limit for ImgBB
+                    showErrorPopup("Image must be under 32 MB!");
+                    return;
+                }
+                const formData = new FormData();
+                formData.append("image", file);
+                fetch("https://api.imgbb.com/1/upload?key=6055d35ebda650b6bc19fbdffc564e0d", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const url = data.data.url;
+                        userRef.update({ bio, country, profilePictureUrl: url })
+                            .then(() => { loadUserData(); hideEditProfilePopup(); })
+                            .catch(err => console.error("Error updating Firestore: ", err));
+                    } else {
+                        showErrorPopup("Image upload failed!");
+                    }
+                })
+                .catch(err => console.error("ImgBB upload failed: ", err));
+            } else {
+                userRef.update({ bio, country })
+                    .then(() => { loadUserData(); hideEditProfilePopup(); })
+                    .catch(err => console.error("Error updating Firestore: ", err));
+            }
+        }
+
         function syncClicks() {
             if (clickBuffer > 0 && currentUser) {
                 const userRef = db.collection("users").doc(currentUser.uid);
@@ -582,13 +752,10 @@
                 }).then(() => {
                     clickBuffer = 0;
                     updateLeaderboard();
-                }).catch(err => {
-                    console.error("Error syncing clicks: ", err);
-                });
+                }).catch(err => console.error("Error syncing clicks: ", err));
             }
         }
 
-        // Increment clicks with effects
         function incrementClicks(event) {
             if (!currentUser) {
                 document.getElementById('click-message').style.display = 'block';
@@ -598,30 +765,26 @@
             document.getElementById('click-message').style.display = 'none';
             localClicks += 1;
             clickBuffer += 1;
-            document.getElementById('click-count').innerText = localClicks;
+            document.getElementById('click-count').innerText = `Clicks: ${localClicks}`;
 
-            // Trigger particle effect
             const rect = document.getElementById('click-btn').getBoundingClientRect();
             const x = rect.left + rect.width / 2;
             const y = rect.top + rect.height / 2;
             createParticles(x, y);
 
-            // Speed up stars temporarily
             if (!clickSpeedBoost) {
                 clickSpeedBoost = true;
                 updateStarSpeed(true);
                 setTimeout(() => {
                     clickSpeedBoost = false;
                     updateStarSpeed(false);
-                }, 2000); // Slow down after 2 seconds
+                }, 2000);
             }
 
-            // Debounce sync to Firebase
             if (syncTimeout) clearTimeout(syncTimeout);
             syncTimeout = setTimeout(syncClicks, 500);
         }
 
-        // Initialize game
         auth.onAuthStateChanged((user) => {
             if (user) {
                 currentUser = user;
@@ -636,8 +799,12 @@
                 currentUser = null;
                 localClicks = 0;
                 clickBuffer = 0;
-                document.getElementById('click-count').innerText = '0';
+                document.getElementById('click-count').innerText = 'Clicks: 0';
                 document.getElementById('user-email').innerText = 'Not Logged In';
+                document.getElementById('bio').innerText = 'No bio yet';
+                document.getElementById('country').innerText = 'Not specified';
+                document.getElementById('join-date').innerText = '';
+                document.getElementById('profile-picture').style.display = 'none';
                 document.getElementById('login-btn').style.display = 'inline-block';
                 document.getElementById('signup-btn').style.display = 'inline-block';
                 document.getElementById('logout-btn').style.display = 'none';
@@ -645,7 +812,6 @@
             }
         });
 
-        // Start the game
         initSpaceBackground();
         updateLeaderboard();
     </script>
