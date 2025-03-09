@@ -412,12 +412,12 @@
         };
         firebase.initializeApp(firebaseConfig);
         const appCheck = firebase.appCheck();
-        appCheck.activate('6LdQq-4qAAAAABzNzVlhJzLlxbK3zh6M5NiHY7cf', true);
+        appCheck.activate('YOUR_ACTUAL_RECAPTCHA_SITE_KEY_HERE', true); // Replace with your reCAPTCHA Site Key
         appCheck.getToken().then(token => console.log("App Check Token:", token)).catch(err => console.error("App Check Error:", err));
         const auth = firebase.auth();
         const db = firebase.firestore();
         const storage = firebase.storage();
-
+    
         let currentUser = null;
         let totalClicks = 0;
         let localClicks = 0;
@@ -431,15 +431,15 @@
         let fakeCPSCount = 0;
         let highestCPS = 0;
         const defaultProfilePic = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24"><path d="M2 2l14 14-4 4-6-6-4-4z" fill="%23000"/><path d="M2 2l14 14-4 4-6-6-4-4z" stroke="%23fff" stroke-width="2" fill="none"/></svg>';
-
+    
         if (!localStorage.getItem('visited')) {
             showRulesPopup();
             localStorage.setItem('visited', 'true');
         }
-
+    
         function initSpaceBackground() {
             const spaceBackground = document.getElementById('space-background');
-            const starCount = 30; // Reduced for performance
+            const starCount = 30;
             for (let i = 0; i < starCount; i++) {
                 const star = document.createElement('div');
                 star.classList.add('star');
@@ -451,7 +451,7 @@
                 spaceBackground.appendChild(star);
             }
         }
-
+    
         function updateStarSpeed(faster = false) {
             const stars = document.querySelectorAll('.star');
             const newSpeed = faster ? baseStarSpeed / 4 : baseStarSpeed;
@@ -459,7 +459,7 @@
                 star.style.animationDuration = `${newSpeed + Math.random() * 5}s`;
             });
         }
-
+    
         function createParticles(x, y) {
             for (let i = 0; i < 10; i++) {
                 const particle = document.createElement('div');
@@ -467,7 +467,7 @@
                 const size = Math.random() * 3 + 1;
                 particle.style.width = `${size}px`;
                 particle.style.height = `${size}px`;
-                particle.style.background = `hsl(${Math.random() * 60 + 30}, 100%, 50%)`; // Yellow to orange
+                particle.style.background = `hsl(${Math.random() * 60 + 30}, 100%, 50%)`;
                 particle.style.left = `${x}px`;
                 particle.style.top = `${y}px`;
                 const angle = Math.random() * 2 * Math.PI;
@@ -480,9 +480,9 @@
                 setTimeout(() => particle.remove(), 500);
             }
         }
-
+    
         function startProfileListener() {
-            if (currentUser) {
+            if (currentUser && currentUser.emailVerified) {
                 profileListener = db.collection("users").doc(currentUser.uid).onSnapshot((doc) => {
                     if (doc.exists) {
                         const data = doc.data();
@@ -501,51 +501,57 @@
                         }
                         document.getElementById('user-email').innerText = data.emailPublic ? data.email : data.username;
                     }
+                }, (err) => console.error("Profile listener error:", err));
+            }
+        }
+    
+        function startLeaderboardListener() {
+            if (currentUser && currentUser.emailVerified) {
+                if (leaderboardListener) leaderboardListener();
+                document.getElementById('leaderboard-loading').style.display = 'block';
+                leaderboardListener = db.collection("users").orderBy("clicks", "desc").limit(5).onSnapshot((snapshot) => {
+                    document.getElementById('leaderboard-loading').style.display = 'none';
+                    const leaderboard = document.getElementById('leaderboard');
+                    leaderboard.innerHTML = '';
+                    totalClicks = 0;
+                    snapshot.forEach(doc => {
+                        const userData = doc.data();
+                        if (userData.clicks !== undefined) {
+                            const item = document.createElement('div');
+                            item.className = 'leaderboard-item';
+                            item.dataset.userId = doc.id;
+                            if (doc.id === currentUser?.uid) {
+                                item.id = 'user-leaderboard-item';
+                            }
+                            item.onclick = () => showUserProfile(doc.id);
+                            const img = document.createElement('img');
+                            img.src = userData.profilePictureUrl || defaultProfilePic;
+                            img.alt = 'Profile';
+                            const span = document.createElement('span');
+                            span.textContent = `${userData.username} - ${userData.clicks} clicks`;
+                            const incrementSpan = document.createElement('span');
+                            incrementSpan.className = 'click-increment';
+                            incrementSpan.textContent = '+1';
+                            item.appendChild(img);
+                            item.appendChild(span);
+                            item.appendChild(incrementSpan);
+                            leaderboard.appendChild(item);
+                            totalClicks += userData.clicks;
+                        }
+                    });
+                    updateChanceOfWinning();
+                }, (err) => {
+                    console.error("Error in leaderboard listener:", err);
+                    document.getElementById('leaderboard-loading').style.display = 'none';
                 });
             }
         }
-
-        function startLeaderboardListener() {
-            if (leaderboardListener) leaderboardListener();
-            document.getElementById('leaderboard-loading').style.display = 'block';
-            leaderboardListener = db.collection("users").orderBy("clicks", "desc").limit(5).onSnapshot((snapshot) => {
-                document.getElementById('leaderboard-loading').style.display = 'none';
-                const leaderboard = document.getElementById('leaderboard');
-                leaderboard.innerHTML = '';
-                totalClicks = 0;
-                snapshot.forEach(doc => {
-                    const userData = doc.data();
-                    if (userData.clicks !== undefined) {
-                        const item = document.createElement('div');
-                        item.className = 'leaderboard-item';
-                        item.dataset.userId = doc.id;
-                        if (doc.id === currentUser?.uid) {
-                            item.id = 'user-leaderboard-item';
-                        }
-                        item.onclick = () => showUserProfile(doc.id);
-                        const img = document.createElement('img');
-                        img.src = userData.profilePictureUrl || defaultProfilePic;
-                        img.alt = 'Profile';
-                        const span = document.createElement('span');
-                        span.textContent = `${userData.username} - ${userData.clicks} clicks`;
-                        const incrementSpan = document.createElement('span');
-                        incrementSpan.className = 'click-increment';
-                        incrementSpan.textContent = '+1';
-                        item.appendChild(img);
-                        item.appendChild(span);
-                        item.appendChild(incrementSpan);
-                        leaderboard.appendChild(item);
-                        totalClicks += userData.clicks;
-                    }
-                });
-                updateChanceOfWinning();
-            }, (err) => {
-                console.error("Error in leaderboard listener: ", err);
-                document.getElementById('leaderboard-loading').style.display = 'none';
-            });
-        }
-
+    
         function showLeaderboardPopup() {
+            if (!currentUser || !currentUser.emailVerified) {
+                showErrorPopup("Please verify your email to view the leaderboard!");
+                return;
+            }
             const fullLeaderboard = document.getElementById('full-leaderboard');
             fullLeaderboard.innerHTML = '<div>Loading...</div>';
             db.collection("users").orderBy("clicks", "desc").get()
@@ -572,18 +578,18 @@
                     document.getElementById('overlay').style.display = 'block';
                 })
                 .catch(err => {
-                    console.error("Error fetching leaderboard: ", err);
+                    console.error("Error fetching leaderboard:", err);
                     fullLeaderboard.innerHTML = 'Error loading leaderboard.';
                 });
         }
-
+    
         function hideLeaderboardPopup() {
             document.getElementById('leaderboard-popup').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
         }
-
+    
         function updateChanceOfWinning() {
-            if (currentUser) {
+            if (currentUser && currentUser.emailVerified) {
                 const userRef = db.collection("users").doc(currentUser.uid);
                 userRef.get().then((doc) => {
                     if (doc.exists) {
@@ -591,63 +597,67 @@
                         const chance = totalClicks > 0 ? ((userClicks / totalClicks) * 100).toFixed(2) : 0;
                         document.getElementById('chance-of-winning').innerText = `Chance of Winning: ${chance}%`;
                     }
-                });
+                }).catch(err => console.error("Error updating chance:", err));
             }
         }
-
+    
         function showRulesPopup() {
             document.getElementById('rules-popup').style.display = 'block';
             document.getElementById('overlay').style.display = 'block';
         }
-
+    
         function closeRulesPopup() {
             document.getElementById('rules-popup').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
         }
-
+    
         function showLogin() {
             document.getElementById('login-popup').style.display = 'block';
             document.getElementById('overlay').style.display = 'block';
         }
-
+    
         function hideLogin() {
             document.getElementById('login-popup').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
         }
-
+    
         function showSignUp() {
             document.getElementById('signup-popup').style.display = 'block';
             document.getElementById('overlay').style.display = 'block';
         }
-
+    
         function hideSignUp() {
             document.getElementById('signup-popup').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
         }
-
+    
         function showWelcomePopup(username) {
-            document.getElementById('welcome-message').innerText = `Welcome, ${username}! You could win 100% of the weekly ad revenue!`;
+            document.getElementById('welcome-message').innerText = `Welcome, ${username}! ${currentUser && !currentUser.emailVerified ? "Verify your email to start clicking!" : "You could win 100% of the weekly ad revenue!"}`;
             document.getElementById('welcome-popup').style.display = 'block';
             document.getElementById('overlay').style.display = 'block';
         }
-
+    
         function closeWelcomePopup() {
             document.getElementById('welcome-popup').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
         }
-
+    
         function showErrorPopup(message) {
             document.getElementById('error-message').innerText = message;
             document.getElementById('error-popup').style.display = 'block';
             document.getElementById('overlay').style.display = 'block';
         }
-
+    
         function hideErrorPopup() {
             document.getElementById('error-popup').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
         }
-
+    
         function showUserProfile(userId) {
+            if (!currentUser || !currentUser.emailVerified) {
+                showErrorPopup("Please verify your email to view profiles!");
+                return;
+            }
             const userRef = db.collection("users").doc(userId);
             userRef.get().then((doc) => {
                 if (doc.exists) {
@@ -662,35 +672,37 @@
                     document.getElementById('user-profile-popup').style.display = 'block';
                     document.getElementById('overlay').style.display = 'block';
                 }
-            }).catch((error) => console.error("Error fetching user profile: ", error));
+            }).catch((error) => console.error("Error fetching user profile:", error));
         }
-
+    
         function hideUserProfilePopup() {
             document.getElementById('user-profile-popup').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
         }
-
+    
         function showEditProfilePopup() {
-            if (currentUser) {
-                const userRef = db.collection("users").doc(currentUser.uid);
-                userRef.get().then((doc) => {
-                    if (doc.exists) {
-                        const data = doc.data();
-                        document.getElementById('bio-input').value = data.bio || "";
-                        document.getElementById('country-input').value = data.country || "";
-                        document.getElementById('profile-picture-input').value = "";
-                        document.getElementById('edit-profile-popup').style.display = 'block';
-                        document.getElementById('overlay').style.display = 'block';
-                    }
-                }).catch((error) => console.error("Error loading profile data: ", error));
+            if (!currentUser || !currentUser.emailVerified) {
+                showErrorPopup("Please verify your email to edit your profile!");
+                return;
             }
+            const userRef = db.collection("users").doc(currentUser.uid);
+            userRef.get().then((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    document.getElementById('bio-input').value = data.bio || "";
+                    document.getElementById('country-input').value = data.country || "";
+                    document.getElementById('profile-picture-input').value = "";
+                    document.getElementById('edit-profile-popup').style.display = 'block';
+                    document.getElementById('overlay').style.display = 'block';
+                }
+            }).catch((error) => console.error("Error loading profile data:", error));
         }
-
+    
         function hideEditProfilePopup() {
             document.getElementById('edit-profile-popup').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
         }
-
+    
         function login(event) {
             event.preventDefault();
             const email = document.getElementById('email').value;
@@ -710,38 +722,41 @@
                     showErrorPopup(friendlyMessage);
                 });
         }
-
+    
         function signUp(event) {
             event.preventDefault();
             const username = document.getElementById('signup-username').value.trim();
             const email = document.getElementById('signup-email').value;
             const password = document.getElementById('signup-password').value;
             const emailPublic = document.getElementById('privacy-toggle').checked;
-
+    
             if (username.length === 0) {
                 showErrorPopup("Please enter a username!");
                 return;
             }
-
+    
             auth.createUserWithEmailAndPassword(email, password)
                 .then((userCredential) => {
                     currentUser = userCredential.user;
-                    const userRef = db.collection("users").doc(currentUser.uid);
-                    userRef.set({
-                        username: username,
-                        email: currentUser.email,
-                        emailPublic: emailPublic,
-                        clicks: 0,
-                        joinDate: new Date().toISOString(),
-                        playtime: 0,
-                        bio: "",
-                        profilePictureUrl: "",
-                        country: "",
-                        highestCPS: 0
-                    }).then(() => {
-                        hideSignUp();
-                        showWelcomePopup(username);
-                    }).catch((error) => console.error("Error creating user document: ", error));
+                    currentUser.sendEmailVerification().then(() => {
+                        const userRef = db.collection("users").doc(currentUser.uid);
+                        userRef.set({
+                            username: username,
+                            email: currentUser.email,
+                            emailPublic: emailPublic,
+                            clicks: 0,
+                            joinDate: new Date().toISOString(),
+                            playtime: 0,
+                            bio: "",
+                            profilePictureUrl: "",
+                            country: "",
+                            highestCPS: 0,
+                            emailVerified: false
+                        }).then(() => {
+                            hideSignUp();
+                            showWelcomePopup(username);
+                        }).catch(err => console.error("Error setting user data:", err));
+                    });
                 })
                 .catch((error) => {
                     let friendlyMessage = "Sign-up failed. Please try again.";
@@ -753,7 +768,7 @@
                     showErrorPopup(friendlyMessage);
                 });
         }
-
+    
         function logout() {
             if (leaderboardListener) leaderboardListener();
             if (profileListener) profileListener();
@@ -777,11 +792,11 @@
                 document.getElementById('click-message').style.display = 'block';
                 document.getElementById('click-btn').disabled = true;
                 document.getElementById('leaderboard').innerHTML = '';
-            }).catch((error) => console.error("Logout failed: ", error));
+            }).catch((error) => console.error("Logout failed:", error));
         }
-
+    
         function loadUserData() {
-            if (currentUser) {
+            if (currentUser && currentUser.emailVerified) {
                 const userRef = db.collection("users").doc(currentUser.uid);
                 userRef.get().then((doc) => {
                     if (doc.exists) {
@@ -804,19 +819,21 @@
                         document.getElementById('user-email').innerText = data.emailPublic ? data.email : data.username;
                         document.getElementById('click-message').style.display = 'none';
                     }
-                }).catch((error) => console.error("Error loading user data: ", error));
+                }).catch((error) => console.error("Error loading user data:", error));
             }
         }
-
+    
         function saveProfile(event) {
             event.preventDefault();
-            if (!currentUser) return;
-
+            if (!currentUser || !currentUser.emailVerified) {
+                showErrorPopup("Please verify your email to save your profile!");
+                return;
+            }
             const bio = document.getElementById('bio-input').value;
             const country = document.getElementById('country-input').value;
             const file = document.getElementById('profile-picture-input').files[0];
             const userRef = db.collection("users").doc(currentUser.uid);
-
+    
             if (file) {
                 if (file.size > 32 * 1024 * 1024) {
                     showErrorPopup("Image must be under 32 MB!");
@@ -854,7 +871,7 @@
                     .catch(err => console.error("Firestore update error:", err));
             }
         }
-
+    
         function calculateCPS() {
             const now = Date.now();
             clickTimestamps = clickTimestamps.filter(ts => now - ts < 1000);
@@ -868,30 +885,34 @@
             }
             if (cps > highestCPS) {
                 highestCPS = cps;
-                if (currentUser) {
+                if (currentUser && currentUser.emailVerified) {
                     db.collection("users").doc(currentUser.uid).update({ highestCPS: cps });
                 }
             }
             return cps;
         }
-
+    
         function incrementClicks(event) {
             if (!currentUser) {
                 document.getElementById('click-message').style.display = 'block';
                 return;
             }
-
+            if (!currentUser.emailVerified) {
+                showErrorPopup("Please verify your email to start clicking!");
+                return;
+            }
+    
             localClicks += 1;
             clickBuffer += 1;
             clickTimestamps.push(Date.now());
             calculateCPS();
             document.getElementById('click-count').innerText = `Clicks: ${localClicks}`;
-
+    
             const rect = document.getElementById('click-btn').getBoundingClientRect();
             const x = event.clientX;
             const y = event.clientY;
             createParticles(x, y);
-
+    
             if (!clickSpeedBoost) {
                 clickSpeedBoost = true;
                 updateStarSpeed(true);
@@ -900,10 +921,10 @@
                     updateStarSpeed(false);
                 }, 500);
             }
-
+    
             if (syncTimeout) clearTimeout(syncTimeout);
             syncTimeout = setTimeout(syncClicks, 500);
-
+    
             if (currentUser) {
                 const userItem = document.querySelector(`.leaderboard-item[data-user-id="${currentUser.uid}"]`);
                 if (userItem) {
@@ -913,18 +934,18 @@
                 }
             }
         }
-
+    
         function syncClicks() {
-            if (clickBuffer > 0 && currentUser) {
+            if (clickBuffer > 0 && currentUser && currentUser.emailVerified) {
                 const userRef = db.collection("users").doc(currentUser.uid);
                 userRef.update({
                     clicks: firebase.firestore.FieldValue.increment(clickBuffer)
                 }).then(() => {
                     clickBuffer = 0;
-                }).catch(err => console.error("Error syncing clicks: ", err));
+                }).catch(err => console.error("Error syncing clicks:", err));
             }
         }
-
+    
         function deleteAccount(force = false) {
             if (!currentUser) return;
             if (!force && !confirm("Are you sure you want to delete your account? This action cannot be undone.")) return;
@@ -933,20 +954,33 @@
                 auth.currentUser.delete().then(() => {
                     logout();
                 });
-            });
+            }).catch(err => console.error("Error deleting account:", err));
         }
-
+    
         auth.onAuthStateChanged((user) => {
             if (user) {
                 currentUser = user;
-                loadUserData();
-                startProfileListener();
-                startLeaderboardListener();
-                document.getElementById('login-btn').style.display = 'none';
-                document.getElementById('signup-btn').style.display = 'none';
-                document.getElementById('logout-btn').style.display = 'inline-block';
-                document.getElementById('click-btn').disabled = false;
-                document.getElementById('click-message').style.display = 'none';
+                if (currentUser.emailVerified) {
+                    loadUserData();
+                    startProfileListener();
+                    startLeaderboardListener();
+                    document.getElementById('login-btn').style.display = 'none';
+                    document.getElementById('signup-btn').style.display = 'none';
+                    document.getElementById('logout-btn').style.display = 'inline-block';
+                    document.getElementById('click-btn').disabled = false;
+                    document.getElementById('click-message').style.display = 'none';
+                    document.getElementById('edit-profile-btn').style.display = 'block';
+                    document.getElementById('delete-account-btn').style.display = 'block';
+                } else {
+                    document.getElementById('click-btn').disabled = true;
+                    document.getElementById('click-message').innerText = "Please verify your email to start clicking!";
+                    document.getElementById('click-message').style.display = 'block';
+                    document.getElementById('login-btn').style.display = 'none';
+                    document.getElementById('signup-btn').style.display = 'none';
+                    document.getElementById('logout-btn').style.display = 'inline-block';
+                    document.getElementById('edit-profile-btn').style.display = 'none';
+                    document.getElementById('delete-account-btn').style.display = 'block';
+                }
             } else {
                 if (leaderboardListener) leaderboardListener();
                 if (profileListener) profileListener();
@@ -959,6 +993,8 @@
                 document.getElementById('country').innerText = 'Not specified';
                 document.getElementById('join-date').innerText = '';
                 document.getElementById('profile-picture').style.display = 'none';
+                document.getElementById('chance-of-winning').innerText = 'Chance of Winning: 0%';
+                document.getElementById('highest-cps').innerText = 'Highest CPS: 0';
                 document.getElementById('login-btn').style.display = 'inline-block';
                 document.getElementById('signup-btn').style.display = 'inline-block';
                 document.getElementById('logout-btn').style.display = 'none';
@@ -969,7 +1005,7 @@
                 document.getElementById('leaderboard').innerHTML = '';
             }
         });
-
+    
         initSpaceBackground();
     </script>
 </body>
