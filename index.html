@@ -410,9 +410,21 @@
             messagingSenderId: "689145020485",
             appId: "1:689145020485:web:458d083ec5bca7d8b3e32c"
         };
+        console.log("Initializing Firebase with config:", firebaseConfig);
         firebase.initializeApp(firebaseConfig);
         const appCheck = firebase.appCheck();
-        appCheck.activate('6LdQq-4qAAAAABzNzVlhJzLlxbK3zh6M5NiHY7cf', true); // Replace with your actual reCAPTCHA v3 Site Key
+        console.log("Activating App Check with site key: 6LdQq-4qAAAAABzNzVlhJzLlxbK3zh6M5NiHY7cf");
+        appCheck.activate('6LdQq-4qAAAAABzNzVlhJzLlxbK3zh6M5NiHY7cf', true);
+
+        // Debug App Check token
+        appCheck.getToken()
+            .then(token => console.log("Initial App Check Token:", token.token))
+            .catch(err => console.error("App Check Token Error:", err.message));
+        appCheck.onTokenChanged(
+            (token) => console.log("App Check Token Updated:", token.token),
+            (err) => console.error("App Check Token Failed:", err.message)
+        );
+
         const auth = firebase.auth();
         const db = firebase.firestore();
         const storage = firebase.storage();
@@ -482,9 +494,11 @@
     
         function startProfileListener() {
             if (currentUser) {
+                console.log("Starting profile listener for user:", currentUser.uid);
                 profileListener = db.collection("users").doc(currentUser.uid).onSnapshot((doc) => {
                     if (doc.exists) {
                         const data = doc.data();
+                        console.log("Profile snapshot received:", data);
                         localClicks = data.clicks || 0;
                         document.getElementById('click-count').innerText = `Clicks: ${localClicks}`;
                         document.getElementById('join-date').innerText = `Joined: ${new Date(data.joinDate).toLocaleDateString()}`;
@@ -499,16 +513,20 @@
                             document.getElementById('profile-picture').style.display = 'block';
                         }
                         document.getElementById('user-email').innerText = data.emailPublic ? data.email : data.username;
+                    } else {
+                        console.log("No profile data found for user:", currentUser.uid);
                     }
-                }, (err) => console.error("Profile listener error:", err));
+                }, (err) => console.error("Profile listener error:", err.message));
             }
         }
     
         function startLeaderboardListener() {
             if (currentUser) {
+                console.log("Starting leaderboard listener for user:", currentUser.uid);
                 if (leaderboardListener) leaderboardListener();
                 document.getElementById('leaderboard-loading').style.display = 'block';
                 leaderboardListener = db.collection("users").orderBy("clicks", "desc").limit(5).onSnapshot((snapshot) => {
+                    console.log("Leaderboard snapshot received, docs count:", snapshot.docs.length);
                     document.getElementById('leaderboard-loading').style.display = 'none';
                     const leaderboard = document.getElementById('leaderboard');
                     leaderboard.innerHTML = '';
@@ -540,21 +558,26 @@
                     });
                     updateChanceOfWinning();
                 }, (err) => {
-                    console.error("Error in leaderboard listener:", err);
+                    console.error("Leaderboard listener error:", err.message);
                     document.getElementById('leaderboard-loading').style.display = 'none';
                 });
+            } else {
+                console.log("No current user, skipping leaderboard listener");
             }
         }
     
         function showLeaderboardPopup() {
             if (!currentUser) {
                 showErrorPopup("Please log in to view the leaderboard!");
+                console.log("Leaderboard popup blocked: user not logged in");
                 return;
             }
+            console.log("Fetching full leaderboard for user:", currentUser.uid);
             const fullLeaderboard = document.getElementById('full-leaderboard');
             fullLeaderboard.innerHTML = '<div>Loading...</div>';
             db.collection("users").orderBy("clicks", "desc").get()
                 .then((snapshot) => {
+                    console.log("Full leaderboard snapshot received, docs count:", snapshot.docs.length);
                     fullLeaderboard.innerHTML = '';
                     snapshot.forEach(doc => {
                         const userData = doc.data();
@@ -577,7 +600,7 @@
                     document.getElementById('overlay').style.display = 'block';
                 })
                 .catch(err => {
-                    console.error("Error fetching leaderboard:", err);
+                    console.error("Error fetching full leaderboard:", err.message);
                     fullLeaderboard.innerHTML = 'Error loading leaderboard.';
                 });
         }
@@ -595,8 +618,9 @@
                         const userClicks = doc.data().clicks || 0;
                         const chance = totalClicks > 0 ? ((userClicks / totalClicks) * 100).toFixed(2) : 0;
                         document.getElementById('chance-of-winning').innerText = `Chance of Winning: ${chance}%`;
+                        console.log("Chance of winning updated:", chance);
                     }
-                }).catch(err => console.error("Error updating chance:", err));
+                }).catch(err => console.error("Error updating chance:", err.message));
             }
         }
     
@@ -671,7 +695,7 @@
                     document.getElementById('user-profile-popup').style.display = 'block';
                     document.getElementById('overlay').style.display = 'block';
                 }
-            }).catch((error) => console.error("Error fetching user profile:", error));
+            }).catch((error) => console.error("Error fetching user profile:", error.message));
         }
     
         function hideUserProfilePopup() {
@@ -694,7 +718,7 @@
                     document.getElementById('edit-profile-popup').style.display = 'block';
                     document.getElementById('overlay').style.display = 'block';
                 }
-            }).catch((error) => console.error("Error loading profile data:", error));
+            }).catch((error) => console.error("Error loading profile data:", error.message));
         }
     
         function hideEditProfilePopup() {
@@ -706,8 +730,10 @@
             event.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+            console.log("Attempting login with email:", email);
             auth.signInWithEmailAndPassword(email, password)
                 .then((userCredential) => {
+                    console.log("Login successful, user:", userCredential.user.uid);
                     hideLogin();
                     showWelcomePopup(userCredential.user.email.split('@')[0]);
                 })
@@ -718,6 +744,7 @@
                     } else if (error.code === 'auth/wrong-password' || error.message.includes("INVALID_LOGIN_CREDENTIALS")) {
                         friendlyMessage = "Incorrect password. Please check and try again.";
                     }
+                    console.error("Login error:", error.message);
                     showErrorPopup(friendlyMessage);
                 });
         }
@@ -734,9 +761,11 @@
                 return;
             }
     
+            console.log("Attempting signup with email:", email, "username:", username);
             auth.createUserWithEmailAndPassword(email, password)
                 .then((userCredential) => {
                     currentUser = userCredential.user;
+                    console.log("Signup successful, user:", currentUser.uid);
                     const userRef = db.collection("users").doc(currentUser.uid);
                     userRef.set({
                         username: username,
@@ -750,9 +779,10 @@
                         country: "",
                         highestCPS: 0
                     }).then(() => {
+                        console.log("User data set in Firestore");
                         hideSignUp();
                         showWelcomePopup(username);
-                    }).catch(err => console.error("Error setting user data:", err));
+                    }).catch(err => console.error("Error setting user data:", err.message));
                 })
                 .catch((error) => {
                     let friendlyMessage = "Sign-up failed. Please try again.";
@@ -761,6 +791,7 @@
                     } else if (error.code === 'auth/weak-password') {
                         friendlyMessage = "Password too weak. Use at least 6 characters.";
                     }
+                    console.error("Signup error:", error.message);
                     showErrorPopup(friendlyMessage);
                 });
         }
@@ -768,7 +799,9 @@
         function logout() {
             if (leaderboardListener) leaderboardListener();
             if (profileListener) profileListener();
+            console.log("Logging out user:", currentUser?.uid);
             auth.signOut().then(() => {
+                console.log("Logout successful");
                 currentUser = null;
                 localClicks = 0;
                 clickBuffer = 0;
@@ -788,15 +821,17 @@
                 document.getElementById('click-message').style.display = 'block';
                 document.getElementById('click-btn').disabled = true;
                 document.getElementById('leaderboard').innerHTML = '';
-            }).catch((error) => console.error("Logout failed:", error));
+            }).catch((error) => console.error("Logout failed:", error.message));
         }
     
         function loadUserData() {
             if (currentUser) {
+                console.log("Loading user data for:", currentUser.uid);
                 const userRef = db.collection("users").doc(currentUser.uid);
                 userRef.get().then((doc) => {
                     if (doc.exists) {
                         const data = doc.data();
+                        console.log("User data loaded:", data);
                         localClicks = data.clicks || 0;
                         document.getElementById('click-count').innerText = `Clicks: ${localClicks}`;
                         document.getElementById('join-date').innerText = `Joined: ${new Date(data.joinDate).toLocaleDateString()}`;
@@ -814,8 +849,12 @@
                         document.getElementById('delete-account-btn').style.display = 'block';
                         document.getElementById('user-email').innerText = data.emailPublic ? data.email : data.username;
                         document.getElementById('click-message').style.display = 'none';
+                    } else {
+                        console.log("No user data found for:", currentUser.uid);
                     }
-                }).catch((error) => console.error("Error loading user data:", error));
+                }).catch((error) => console.error("Error loading user data:", error.message));
+            } else {
+                console.log("No current user, skipping loadUserData");
             }
         }
     
@@ -847,6 +886,7 @@
                         const url = data.data.url;
                         return userRef.update({ bio, country, profilePictureUrl: url })
                             .then(() => {
+                                console.log("Profile updated with image URL:", url);
                                 loadUserData();
                                 hideEditProfilePopup();
                             });
@@ -855,16 +895,17 @@
                     }
                 })
                 .catch(err => {
-                    console.error("ImgBB/Firestore error:", err);
+                    console.error("ImgBB/Firestore error:", err.message);
                     showErrorPopup("Profile update failed!");
                 });
             } else {
                 userRef.update({ bio, country })
                     .then(() => {
+                        console.log("Profile updated without image");
                         loadUserData();
                         hideEditProfilePopup();
                     })
-                    .catch(err => console.error("Firestore update error:", err));
+                    .catch(err => console.error("Firestore update error:", err.message));
             }
         }
     
@@ -891,8 +932,10 @@
         function incrementClicks(event) {
             if (!currentUser) {
                 document.getElementById('click-message').style.display = 'block';
+                console.log("Click blocked: no current user");
                 return;
             }
+            console.log("Incrementing clicks for user:", currentUser.uid);
             localClicks += 1;
             clickBuffer += 1;
             clickTimestamps.push(Date.now());
@@ -928,12 +971,16 @@
     
         function syncClicks() {
             if (clickBuffer > 0 && currentUser) {
+                console.log("Syncing clicks for user:", currentUser.uid, "buffer:", clickBuffer);
                 const userRef = db.collection("users").doc(currentUser.uid);
                 userRef.update({
                     clicks: firebase.firestore.FieldValue.increment(clickBuffer)
                 }).then(() => {
+                    console.log("Clicks synced successfully");
                     clickBuffer = 0;
-                }).catch(err => console.error("Error syncing clicks:", err));
+                }).catch(err => console.error("Error syncing clicks:", err.message));
+            } else {
+                console.log("No clicks to sync or no user");
             }
         }
     
@@ -945,11 +992,12 @@
                 auth.currentUser.delete().then(() => {
                     logout();
                 });
-            }).catch(err => console.error("Error deleting account:", err));
+            }).catch(err => console.error("Error deleting account:", err.message));
         }
     
         auth.onAuthStateChanged((user) => {
             if (user) {
+                console.log("Auth state changed: User logged in:", user.uid);
                 currentUser = user;
                 loadUserData();
                 startProfileListener();
@@ -962,6 +1010,7 @@
                 document.getElementById('edit-profile-btn').style.display = 'block';
                 document.getElementById('delete-account-btn').style.display = 'block';
             } else {
+                console.log("Auth state changed: User logged out");
                 if (leaderboardListener) leaderboardListener();
                 if (profileListener) profileListener();
                 currentUser = null;
