@@ -140,6 +140,10 @@
             height: 30px;
             border-radius: 50%;
             margin-right: 10px;
+            display: inline-block;
+        }
+        .leaderboard-item span {
+            display: inline-block;
         }
         .leaderboard-item:hover {
             background: #666;
@@ -382,13 +386,11 @@
         };
         firebase.initializeApp(firebaseConfig);
         const appCheck = firebase.appCheck();
-        appCheck.activate(
-            '6LdQq-4qAAAAABzNzVlhJzLlxbK3zh6M5NiHY7cf', // Your reCAPTCHA v3 Site Key
-            true
-        );
+        appCheck.activate('6LdQq-4qAAAAABzNzVlhJzLlxbK3zh6M5NiHY7cf', true);
+        appCheck.getToken().then(token => console.log("App Check Token:", token)).catch(err => console.error("App Check Error:", err));
         const auth = firebase.auth();
         const db = firebase.firestore();
-        const storage = firebase.storage(); // Still included but minimally used
+        const storage = firebase.storage();
 
         let currentUser = null;
         let totalClicks = 0;
@@ -454,7 +456,7 @@
                         if (userData.clicks !== undefined) {
                             leaderboardHTML += `<div class="leaderboard-item" data-user-id="${doc.id}" onclick="showUserProfile('${doc.id}')">
                                 <img src="${userData.profilePictureUrl || defaultProfilePic}" alt="Profile">
-                                ${userData.email} - ${userData.clicks} clicks
+                                <span>${userData.email} - ${userData.clicks} clicks</span>
                             </div>`;
                             totalClicks += userData.clicks;
                         }
@@ -474,7 +476,7 @@
                         if (userData.clicks !== undefined) {
                             leaderboardHTML += `<div class="leaderboard-item" data-user-id="${doc.id}" onclick="showUserProfile('${doc.id}')">
                                 <img src="${userData.profilePictureUrl || defaultProfilePic}" alt="Profile">
-                                ${userData.email} - ${userData.clicks} clicks
+                                <span>${userData.email} - ${userData.clicks} clicks</span>
                             </div>`;
                         }
                     });
@@ -602,12 +604,13 @@
             event.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+            console.log("Login attempt:", { email, password });
 
             auth.signInWithEmailAndPassword(email, password)
                 .then((userCredential) => {
                     currentUser = userCredential.user;
                     loadUserData();
-                    updateLeaderboard();
+                    setTimeout(updateLeaderboard, 1000);
                     document.getElementById('click-message').style.display = 'none';
                     document.getElementById('login-btn').style.display = 'none';
                     document.getElementById('signup-btn').style.display = 'none';
@@ -617,6 +620,7 @@
                     document.getElementById('user-email').innerText = currentUser.email;
                 })
                 .catch((error) => {
+                    console.error("Login error:", error);
                     let friendlyMessage = "Something went wrong. Please check your email or password and try again.";
                     if (error.code === 'auth/user-not-found') {
                         friendlyMessage = "No account found with this email. Please sign up!";
@@ -699,7 +703,7 @@
                         } else {
                             document.getElementById('profile-picture').style.display = 'none';
                         }
-                        document.getElementById('edit-profile-btn').style.display = 'block';
+                        document.getElementById('edit-profile-btn').style.display = 'block'; // Ensure button shows
                     }
                 }).catch((error) => console.error("Error loading user data: ", error));
             }
@@ -715,7 +719,7 @@
             const userRef = db.collection("users").doc(currentUser.uid);
 
             if (file) {
-                if (file.size > 32 * 1024 * 1024) { // 32 MB limit for ImgBB
+                if (file.size > 32 * 1024 * 1024) {
                     showErrorPopup("Image must be under 32 MB!");
                     return;
                 }
@@ -727,20 +731,31 @@
                 })
                 .then(response => response.json())
                 .then(data => {
+                    console.log("ImgBB Response:", data);
                     if (data.success) {
                         const url = data.data.url;
-                        userRef.update({ bio, country, profilePictureUrl: url })
-                            .then(() => { loadUserData(); hideEditProfilePopup(); })
-                            .catch(err => console.error("Error updating Firestore: ", err));
+                        return userRef.update({ bio, country, profilePictureUrl: url })
+                            .then(() => {
+                                console.log("Firestore updated with:", { bio, country, profilePictureUrl: url });
+                                loadUserData();
+                                hideEditProfilePopup();
+                            });
                     } else {
-                        showErrorPopup("Image upload failed!");
+                        showErrorPopup("Image upload failed: " + (data.error?.message || "Unknown error"));
                     }
                 })
-                .catch(err => console.error("ImgBB upload failed: ", err));
+                .catch(err => {
+                    console.error("ImgBB/Firestore error:", err);
+                    showErrorPopup("Profile update failed!");
+                });
             } else {
                 userRef.update({ bio, country })
-                    .then(() => { loadUserData(); hideEditProfilePopup(); })
-                    .catch(err => console.error("Error updating Firestore: ", err));
+                    .then(() => {
+                        console.log("Firestore updated with:", { bio, country });
+                        loadUserData();
+                        hideEditProfilePopup();
+                    })
+                    .catch(err => console.error("Firestore update error:", err));
             }
         }
 
@@ -789,7 +804,7 @@
             if (user) {
                 currentUser = user;
                 loadUserData();
-                updateLeaderboard();
+                setTimeout(updateLeaderboard, 1000);
                 document.getElementById('login-btn').style.display = 'none';
                 document.getElementById('signup-btn').style.display = 'none';
                 document.getElementById('logout-btn').style.display = 'inline-block';
@@ -813,7 +828,6 @@
         });
 
         initSpaceBackground();
-        updateLeaderboard();
     </script>
 </body>
 </html>
