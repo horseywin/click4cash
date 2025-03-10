@@ -19,7 +19,7 @@
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
         import { getFirestore, doc, getDoc, onSnapshot, collection, query, orderBy, limit, getDocs, updateDoc, increment, setDoc } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
         import { getStorage } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-storage.js";
-        import { getAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app-check.js";
+        import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app-check.js";
 
         // Firebase configuration
         const firebaseConfig = {
@@ -38,7 +38,7 @@
         const storage = getStorage(app);
 
         // Initialize App Check with reCAPTCHA v3
-        const appCheck = getAppCheck(app, {
+        const appCheck = initializeAppCheck(app, {
             provider: new ReCaptchaV3Provider('6LdQq-4qAAAAABzNzVlhJzLlxbK3zh6M5NiHY7cf'),
             isTokenAutoRefreshEnabled: true
         });
