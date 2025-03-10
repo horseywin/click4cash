@@ -42,13 +42,13 @@
             provider: new ReCaptchaV3Provider('6LdQq-4qAAAAABzNzVlhJzLlxbK3zh6M5NiHY7cf'),
             isTokenAutoRefreshEnabled: true
         });
-        console.log("Firebase initialized with App Check");
+        console.log("Firebase initialized with App Check. AppCheck instance:", appCheck);
 
-        // Debug App Check Token
-        getToken(appCheck).then((tokenResponse) => {
-            console.log("App Check Token:", tokenResponse.token);
+        // Enhanced App Check Token Debugging
+        getToken(appCheck, { forceRefresh: true }).then((tokenResponse) => {
+            console.log("App Check Token Retrieved:", tokenResponse.token);
         }).catch((error) => {
-            console.error("App Check Token Error:", error.message);
+            console.error("App Check Token Error:", error.message, error.code);
         });
 
         let currentUser = null;
