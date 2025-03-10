@@ -13,11 +13,645 @@
     <meta property="og:type" content="website">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><path d='M2 2l14 14-4 4-6-6-4-4z' fill='%23000'/><path d='M2 2l14 14-4 4-6-6-4-4z' stroke='%23fff' stroke-width='2' fill='none'/></svg>" type="image/svg+xml">
     <title>Click4Cash</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app-check.js"></script>
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc, onSnapshot, collection, query, orderBy, limit, getDocs, updateDoc, increment, setDoc } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+        import { getStorage } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-storage.js";
+        import { getAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app-check.js";
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCQeZ1EOPbHOy8_wOBBvlchZwj8tTCZM2w",
+            authDomain: "click4cash-7e106.firebaseapp.com",
+            projectId: "click4cash-7e106",
+            storageBucket: "click4cash-7e106.appspot.com",
+            messagingSenderId: "689145020485",
+            appId: "1:689145020485:web:458d083ec5bca7d8b3e32c"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        // Initialize App Check with reCAPTCHA v3
+        const appCheck = getAppCheck(app, {
+            provider: new ReCaptchaV3Provider('6LdQq-4qAAAAABzNzVlhJzLlxbK3zh6M5NiHY7cf'),
+            isTokenAutoRefreshEnabled: true
+        });
+        console.log("Firebase initialized with App Check");
+
+        let currentUser = null;
+        let totalClicks = 0;
+        let localClicks = 0;
+        let clickBuffer = 0;
+        let syncTimeout = null;
+        let baseStarSpeed = 20;
+        let clickSpeedBoost = false;
+        let leaderboardListener = null;
+        let profileListener = null;
+        let clickTimestamps = [];
+        let fakeCPSCount = 0;
+        let highestCPS = 0;
+        const defaultProfilePic = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24"><path d="M2 2l14 14-4 4-6-6-4-4z" fill="%23000"/><path d="M2 2l14 14-4 4-6-6-4-4z" stroke="%23fff" stroke-width="2" fill="none"/></svg>';
+
+        if (!localStorage.getItem('visited')) {
+            showRulesPopup();
+            localStorage.setItem('visited', 'true');
+        }
+
+        function initSpaceBackground() {
+            const spaceBackground = document.getElementById('space-background');
+            const starCount = 30;
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.classList.add('star');
+                star.style.width = `${Math.random() * 3 + 1}px`;
+                star.style.height = star.style.width;
+                star.style.left = `${Math.random() * 100}%`;
+                star.style.top = `${Math.random() * -100}vh`;
+                star.style.animationDuration = `${baseStarSpeed + Math.random() * 10}s`;
+                spaceBackground.appendChild(star);
+            }
+        }
+
+        function updateStarSpeed(faster = false) {
+            const stars = document.querySelectorAll('.star');
+            const newSpeed = faster ? baseStarSpeed / 4 : baseStarSpeed;
+            stars.forEach(star => {
+                star.style.animationDuration = `${newSpeed + Math.random() * 5}s`;
+            });
+        }
+
+        function createParticles(x, y) {
+            for (let i = 0; i < 10; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                const size = Math.random() * 3 + 1;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.background = `hsl(${Math.random() * 60 + 30}, 100%, 50%)`;
+                particle.style.left = `${x}px`;
+                particle.style.top = `${y}px`;
+                const angle = Math.random() * 2 * Math.PI;
+                const velocity = Math.random() * 100 + 50;
+                const dx = Math.cos(angle) * velocity;
+                const dy = Math.sin(angle) * velocity;
+                particle.style.setProperty('--dx', `${dx}px`);
+                particle.style.setProperty('--dy', `${dy}px`);
+                document.body.appendChild(particle);
+                setTimeout(() => particle.remove(), 500);
+            }
+        }
+
+        function startProfileListener() {
+            if (currentUser) {
+                console.log("Starting profile listener for user:", currentUser.uid);
+                profileListener = onSnapshot(doc(db, "users", currentUser.uid), (docSnap) => {
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        console.log("Profile snapshot received:", data);
+                        localClicks = data.clicks || 0;
+                        document.getElementById('click-count').innerText = `Clicks: ${localClicks}`;
+                        document.getElementById('join-date').innerText = `Joined: ${new Date(data.joinDate).toLocaleDateString()}`;
+                        document.getElementById('bio').innerText = data.bio || "No bio yet";
+                        document.getElementById('country').innerText = data.country || "Not specified";
+                        document.getElementById('highest-cps').innerText = `Highest CPS: ${data.highestCPS || 0}`;
+                        if (data.profilePictureUrl) {
+                            document.getElementById('profile-picture').src = data.profilePictureUrl;
+                            document.getElementById('profile-picture').style.display = 'block';
+                        } else {
+                            document.getElementById('profile-picture').src = defaultProfilePic;
+                            document.getElementById('profile-picture').style.display = 'block';
+                        }
+                        document.getElementById('user-email').innerText = data.emailPublic ? data.email : data.username;
+                    } else {
+                        console.log("No profile data found for user:", currentUser.uid);
+                    }
+                }, (err) => console.error("Profile listener error:", err.message));
+            }
+        }
+
+        function startLeaderboardListener() {
+            if (currentUser) {
+                console.log("Starting leaderboard listener for user:", currentUser.uid);
+                if (leaderboardListener) leaderboardListener();
+                document.getElementById('leaderboard-loading').style.display = 'block';
+                const q = query(collection(db, "users"), orderBy("clicks", "desc"), limit(5));
+                leaderboardListener = onSnapshot(q, (snapshot) => {
+                    console.log("Leaderboard snapshot received, docs count:", snapshot.docs.length);
+                    document.getElementById('leaderboard-loading').style.display = 'none';
+                    const leaderboard = document.getElementById('leaderboard');
+                    leaderboard.innerHTML = '';
+                    totalClicks = 0;
+                    snapshot.forEach(doc => {
+                        const userData = doc.data();
+                        if (userData.clicks !== undefined) {
+                            const item = document.createElement('div');
+                            item.className = 'leaderboard-item';
+                            item.dataset.userId = doc.id;
+                            if (doc.id === currentUser?.uid) {
+                                item.id = 'user-leaderboard-item';
+                            }
+                            item.onclick = () => showUserProfile(doc.id);
+                            const img = document.createElement('img');
+                            img.src = userData.profilePictureUrl || defaultProfilePic;
+                            img.alt = 'Profile';
+                            const span = document.createElement('span');
+                            span.textContent = `${userData.username} - ${userData.clicks} clicks`;
+                            const incrementSpan = document.createElement('span');
+                            incrementSpan.className = 'click-increment';
+                            incrementSpan.textContent = '+1';
+                            item.appendChild(img);
+                            item.appendChild(span);
+                            item.appendChild(incrementSpan);
+                            leaderboard.appendChild(item);
+                            totalClicks += userData.clicks;
+                        }
+                    });
+                    updateChanceOfWinning();
+                }, (err) => {
+                    console.error("Leaderboard listener error:", err.message);
+                    document.getElementById('leaderboard-loading').style.display = 'none';
+                });
+            } else {
+                console.log("No current user, skipping leaderboard listener");
+            }
+        }
+
+        function showLeaderboardPopup() {
+            if (!currentUser) {
+                showErrorPopup("Please log in to view the leaderboard!");
+                console.log("Leaderboard popup blocked: user not logged in");
+                return;
+            }
+            console.log("Fetching full leaderboard for user:", currentUser.uid);
+            const fullLeaderboard = document.getElementById('full-leaderboard');
+            fullLeaderboard.innerHTML = '<div>Loading...</div>';
+            const q = query(collection(db, "users"), orderBy("clicks", "desc"));
+            getDocs(q).then((snapshot) => {
+                console.log("Full leaderboard snapshot received, docs count:", snapshot.docs.length);
+                fullLeaderboard.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const userData = doc.data();
+                    if (userData.clicks !== undefined) {
+                        const item = document.createElement('div');
+                        item.className = 'leaderboard-item';
+                        item.dataset.userId = doc.id;
+                        item.onclick = () => showUserProfile(doc.id);
+                        const img = document.createElement('img');
+                        img.src = userData.profilePictureUrl || defaultProfilePic;
+                        img.alt = 'Profile';
+                        const span = document.createElement('span');
+                        span.textContent = `${userData.username} - ${userData.clicks} clicks`;
+                        item.appendChild(img);
+                        item.appendChild(span);
+                        fullLeaderboard.appendChild(item);
+                    }
+                });
+                document.getElementById('leaderboard-popup').style.display = 'block';
+                document.getElementById('overlay').style.display = 'block';
+            }).catch(err => {
+                console.error("Error fetching full leaderboard:", err.message);
+                fullLeaderboard.innerHTML = 'Error loading leaderboard.';
+            });
+        }
+
+        function hideLeaderboardPopup() {
+            document.getElementById('leaderboard-popup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        function updateChanceOfWinning() {
+            if (currentUser) {
+                getDoc(doc(db, "users", currentUser.uid)).then((docSnap) => {
+                    if (docSnap.exists()) {
+                        const userClicks = docSnap.data().clicks || 0;
+                        const chance = totalClicks > 0 ? ((userClicks / totalClicks) * 100).toFixed(2) : 0;
+                        document.getElementById('chance-of-winning').innerText = `Chance of Winning: ${chance}%`;
+                        console.log("Chance of winning updated:", chance);
+                    }
+                }).catch(err => console.error("Error updating chance:", err.message));
+            }
+        }
+
+        function showRulesPopup() {
+            document.getElementById('rules-popup').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        function closeRulesPopup() {
+            document.getElementById('rules-popup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        function showLogin() {
+            document.getElementById('login-popup').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        function hideLogin() {
+            document.getElementById('login-popup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        function showSignUp() {
+            document.getElementById('signup-popup').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        function hideSignUp() {
+            document.getElementById('signup-popup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        function showWelcomePopup(username) {
+            document.getElementById('welcome-message').innerText = `Welcome, ${username}! You could win 100% of the weekly ad revenue!`;
+            document.getElementById('welcome-popup').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        function closeWelcomePopup() {
+            document.getElementById('welcome-popup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        function showErrorPopup(message) {
+            document.getElementById('error-message').innerText = message;
+            document.getElementById('error-popup').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        function hideErrorPopup() {
+            document.getElementById('error-popup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        function showUserProfile(userId) {
+            if (!currentUser) {
+                showErrorPopup("Please log in to view profiles!");
+                return;
+            }
+            getDoc(doc(db, "users", userId)).then((docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    document.getElementById('popup-profile-picture').src = data.profilePictureUrl || defaultProfilePic;
+                    document.getElementById('popup-user-email').innerText = `Username: ${data.username}${data.emailPublic ? `\nEmail: ${data.email}` : ''}`;
+                    document.getElementById('popup-bio').innerText = data.bio || "No bio yet";
+                    document.getElementById('popup-country').innerText = data.country || "Not specified";
+                    document.getElementById('popup-join-date').innerText = `Joined: ${new Date(data.joinDate).toLocaleDateString()}`;
+                    document.getElementById('popup-clicks').innerText = `Clicks: ${data.clicks || 0}`;
+                    document.getElementById('popup-highest-cps').innerText = `Highest CPS: ${data.highestCPS || 0}`;
+                    document.getElementById('user-profile-popup').style.display = 'block';
+                    document.getElementById('overlay').style.display = 'block';
+                }
+            }).catch((error) => console.error("Error fetching user profile:", error.message));
+        }
+
+        function hideUserProfilePopup() {
+            document.getElementById('user-profile-popup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        function showEditProfilePopup() {
+            if (!currentUser) {
+                showErrorPopup("Please log in to edit your profile!");
+                return;
+            }
+            getDoc(doc(db, "users", currentUser.uid)).then((docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    document.getElementById('bio-input').value = data.bio || "";
+                    document.getElementById('country-input').value = data.country || "";
+                    document.getElementById('profile-picture-input').value = "";
+                    document.getElementById('edit-profile-popup').style.display = 'block';
+                    document.getElementById('overlay').style.display = 'block';
+                }
+            }).catch((error) => console.error("Error loading profile data:", error.message));
+        }
+
+        function hideEditProfilePopup() {
+            document.getElementById('edit-profile-popup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        function login(event) {
+            event.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            console.log("Attempting login with email:", email);
+            signInWithEmailAndPassword(auth, email, password)
+                .then((userCredential) => {
+                    console.log("Login successful, user:", userCredential.user.uid);
+                    hideLogin();
+                    showWelcomePopup(userCredential.user.email.split('@')[0]);
+                })
+                .catch((error) => {
+                    let friendlyMessage = "Login failed. Please try again.";
+                    if (error.code === 'auth/user-not-found') {
+                        friendlyMessage = "No account found with this email. Please sign up!";
+                    } else if (error.code === 'auth/wrong-password' || error.message.includes("INVALID_LOGIN_CREDENTIALS")) {
+                        friendlyMessage = "Incorrect password. Please check and try again.";
+                    }
+                    console.error("Login error:", error.message);
+                    showErrorPopup(friendlyMessage);
+                });
+        }
+
+        function signUp(event) {
+            event.preventDefault();
+            const username = document.getElementById('signup-username').value.trim();
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const emailPublic = document.getElementById('privacy-toggle').checked;
+
+            if (username.length === 0) {
+                showErrorPopup("Please enter a username!");
+                return;
+            }
+
+            console.log("Attempting signup with email:", email, "username:", username);
+            createUserWithEmailAndPassword(auth, email, password)
+                .then((userCredential) => {
+                    currentUser = userCredential.user;
+                    console.log("Signup successful, user:", currentUser.uid);
+                    const userRef = doc(db, "users", currentUser.uid);
+                    setDoc(userRef, {
+                        username: username,
+                        email: currentUser.email,
+                        emailPublic: emailPublic,
+                        clicks: 0,
+                        joinDate: new Date().toISOString(),
+                        playtime: 0,
+                        bio: "",
+                        profilePictureUrl: "",
+                        country: "",
+                        highestCPS: 0
+                    }).then(() => {
+                        console.log("User data set in Firestore");
+                        hideSignUp();
+                        showWelcomePopup(username);
+                    }).catch(err => console.error("Error setting user data:", err.message));
+                })
+                .catch((error) => {
+                    let friendlyMessage = "Sign-up failed. Please try again.";
+                    if (error.code === 'auth/email-already-in-use') {
+                        friendlyMessage = "This email is already in use. Try logging in!";
+                    } else if (error.code === 'auth/weak-password') {
+                        friendlyMessage = "Password too weak. Use at least 6 characters.";
+                    }
+                    console.error("Signup error:", error.message);
+                    showErrorPopup(friendlyMessage);
+                });
+        }
+
+        function logout() {
+            if (leaderboardListener) leaderboardListener();
+            if (profileListener) profileListener();
+            console.log("Logging out user:", currentUser?.uid);
+            signOut(auth).then(() => {
+                console.log("Logout successful");
+                currentUser = null;
+                localClicks = 0;
+                clickBuffer = 0;
+                document.getElementById('click-count').innerText = 'Clicks: 0';
+                document.getElementById('user-email').innerText = 'Not Logged In';
+                document.getElementById('bio').innerText = 'No bio yet';
+                document.getElementById('country').innerText = 'Not specified';
+                document.getElementById('join-date').innerText = '';
+                document.getElementById('profile-picture').style.display = 'none';
+                document.getElementById('chance-of-winning').innerText = 'Chance of Winning: 0%';
+                document.getElementById('highest-cps').innerText = 'Highest CPS: 0';
+                document.getElementById('login-btn').style.display = 'inline-block';
+                document.getElementById('signup-btn').style.display = 'inline-block';
+                document.getElementById('logout-btn').style.display = 'none';
+                document.getElementById('edit-profile-btn').style.display = 'none';
+                document.getElementById('delete-account-btn').style.display = 'none';
+                document.getElementById('click-message').style.display = 'block';
+                document.getElementById('click-btn').disabled = true;
+                document.getElementById('leaderboard').innerHTML = '';
+            }).catch((error) => console.error("Logout failed:", error.message));
+        }
+
+        function loadUserData() {
+            if (currentUser) {
+                console.log("Loading user data for:", currentUser.uid);
+                getDoc(doc(db, "users", currentUser.uid)).then((docSnap) => {
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        console.log("User data loaded:", data);
+                        localClicks = data.clicks || 0;
+                        document.getElementById('click-count').innerText = `Clicks: ${localClicks}`;
+                        document.getElementById('join-date').innerText = `Joined: ${new Date(data.joinDate).toLocaleDateString()}`;
+                        document.getElementById('bio').innerText = data.bio || "No bio yet";
+                        document.getElementById('country').innerText = data.country || "Not specified";
+                        document.getElementById('highest-cps').innerText = `Highest CPS: ${data.highestCPS || 0}`;
+                        if (data.profilePictureUrl) {
+                            document.getElementById('profile-picture').src = data.profilePictureUrl;
+                            document.getElementById('profile-picture').style.display = 'block';
+                        } else {
+                            document.getElementById('profile-picture').src = defaultProfilePic;
+                            document.getElementById('profile-picture').style.display = 'block';
+                        }
+                        document.getElementById('edit-profile-btn').style.display = 'block';
+                        document.getElementById('delete-account-btn').style.display = 'block';
+                        document.getElementById('user-email').innerText = data.emailPublic ? data.email : data.username;
+                        document.getElementById('click-message').style.display = 'none';
+                    } else {
+                        console.log("No user data found for:", currentUser.uid);
+                    }
+                }).catch((error) => console.error("Error loading user data:", error.message));
+            } else {
+                console.log("No current user, skipping loadUserData");
+            }
+        }
+
+        function saveProfile(event) {
+            event.preventDefault();
+            if (!currentUser) {
+                showErrorPopup("Please log in to save your profile!");
+                return;
+            }
+            const bio = document.getElementById('bio-input').value;
+            const country = document.getElementById('country-input').value;
+            const file = document.getElementById('profile-picture-input').files[0];
+            const userRef = doc(db, "users", currentUser.uid);
+
+            if (file) {
+                if (file.size > 32 * 1024 * 1024) {
+                    showErrorPopup("Image must be under 32 MB!");
+                    return;
+                }
+                const formData = new FormData();
+                formData.append("image", file);
+                fetch("https://api.imgbb.com/1/upload?key=6055d35ebda650b6bc19fbdffc564e0d", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const url = data.data.url;
+                        return updateDoc(userRef, { bio, country, profilePictureUrl: url })
+                            .then(() => {
+                                console.log("Profile updated with image URL:", url);
+                                loadUserData();
+                                hideEditProfilePopup();
+                            });
+                    } else {
+                        showErrorPopup("Image upload failed: " + (data.error?.message || "Unknown error"));
+                    }
+                })
+                .catch(err => {
+                    console.error("ImgBB/Firestore error:", err.message);
+                    showErrorPopup("Profile update failed!");
+                });
+            } else {
+                updateDoc(userRef, { bio, country })
+                    .then(() => {
+                        console.log("Profile updated without image");
+                        loadUserData();
+                        hideEditProfilePopup();
+                    })
+                    .catch(err => console.error("Firestore update error:", err.message));
+            }
+        }
+
+        function calculateCPS() {
+            const now = Date.now();
+            clickTimestamps = clickTimestamps.filter(ts => now - ts < 1000);
+            const cps = clickTimestamps.length;
+            if (cps > 40) {
+                showErrorPopup("Autoclicker detected! Please stop using autoclickers.");
+                fakeCPSCount += cps;
+                if (fakeCPSCount > 300) {
+                    deleteAccount(true);
+                }
+            }
+            if (cps > highestCPS) {
+                highestCPS = cps;
+                if (currentUser) {
+                    updateDoc(doc(db, "users", currentUser.uid), { highestCPS: cps });
+                }
+            }
+            return cps;
+        }
+
+        function incrementClicks(event) {
+            if (!currentUser) {
+                document.getElementById('click-message').style.display = 'block';
+                console.log("Click blocked: no current user");
+                return;
+            }
+            console.log("Incrementing clicks for user:", currentUser.uid);
+            localClicks += 1;
+            clickBuffer += 1;
+            clickTimestamps.push(Date.now());
+            calculateCPS();
+            document.getElementById('click-count').innerText = `Clicks: ${localClicks}`;
+
+            const rect = document.getElementById('click-btn').getBoundingClientRect();
+            const x = event.clientX;
+            const y = event.clientY;
+            createParticles(x, y);
+
+            if (!clickSpeedBoost) {
+                clickSpeedBoost = true;
+                updateStarSpeed(true);
+                setTimeout(() => {
+                    clickSpeedBoost = false;
+                    updateStarSpeed(false);
+                }, 500);
+            }
+
+            if (syncTimeout) clearTimeout(syncTimeout);
+            syncTimeout = setTimeout(syncClicks, 500);
+
+            if (currentUser) {
+                const userItem = document.querySelector(`.leaderboard-item[data-user-id="${currentUser.uid}"]`);
+                if (userItem) {
+                    const incrementSpan = userItem.querySelector('.click-increment');
+                    incrementSpan.classList.add('show');
+                    setTimeout(() => incrementSpan.classList.remove('show'), 500);
+                }
+            }
+        }
+
+        function syncClicks() {
+            if (clickBuffer > 0 && currentUser) {
+                console.log("Syncing clicks for user:", currentUser.uid, "buffer:", clickBuffer);
+                updateDoc(doc(db, "users", currentUser.uid), {
+                    clicks: increment(clickBuffer)
+                }).then(() => {
+                    console.log("Clicks synced successfully");
+                    clickBuffer = 0;
+                }).catch(err => console.error("Error syncing clicks:", err.message));
+            } else {
+                console.log("No clicks to sync or no user");
+            }
+        }
+
+        function deleteAccount(force = false) {
+            if (!currentUser) return;
+            if (!force && !confirm("Are you sure you want to delete your account? This action cannot be undone.")) return;
+            const userRef = doc(db, "users", currentUser.uid);
+            deleteDoc(userRef).then(() => {
+                auth.currentUser.delete().then(() => {
+                    logout();
+                });
+            }).catch(err => console.error("Error deleting account:", err.message));
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                console.log("Auth state changed: User logged in:", user.uid);
+                currentUser = user;
+                loadUserData();
+                startProfileListener();
+                startLeaderboardListener();
+                document.getElementById('login-btn').style.display = 'none';
+                document.getElementById('signup-btn').style.display = 'none';
+                document.getElementById('logout-btn').style.display = 'inline-block';
+                document.getElementById('click-btn').disabled = false;
+                document.getElementById('click-message').style.display = 'none';
+                document.getElementById('edit-profile-btn').style.display = 'block';
+                document.getElementById('delete-account-btn').style.display = 'block';
+            } else {
+                console.log("Auth state changed: User logged out");
+                if (leaderboardListener) leaderboardListener();
+                if (profileListener) profileListener();
+                currentUser = null;
+                localClicks = 0;
+                clickBuffer = 0;
+                document.getElementById('click-count').innerText = 'Clicks: 0';
+                document.getElementById('user-email').innerText = 'Not Logged In';
+                document.getElementById('bio').innerText = 'No bio yet';
+                document.getElementById('country').innerText = 'Not specified';
+                document.getElementById('join-date').innerText = '';
+                document.getElementById('profile-picture').style.display = 'none';
+                document.getElementById('chance-of-winning').innerText = 'Chance of Winning: 0%';
+                document.getElementById('highest-cps').innerText = 'Highest CPS: 0';
+                document.getElementById('login-btn').style.display = 'inline-block';
+                document.getElementById('signup-btn').style.display = 'inline-block';
+                document.getElementById('logout-btn').style.display = 'none';
+                document.getElementById('edit-profile-btn').style.display = 'none';
+                document.getElementById('delete-account-btn').style.display = 'none';
+                document.getElementById('click-btn').disabled = true;
+                document.getElementById('click-message').style.display = 'block';
+                document.getElementById('leaderboard').innerHTML = '';
+            }
+        });
+
+        initSpaceBackground();
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-check-compat.js"></script>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6598513151197899" crossorigin="anonymous"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Oxanium:wght@400;700&display=swap');
@@ -400,644 +1034,5 @@
     </div>
 
     <div class="space-background" id="space-background"></div>
-
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyCQeZ1EOPbHOy8_wOBBvlchZwj8tTCZM2w",
-            authDomain: "click4cash-7e106.firebaseapp.com",
-            projectId: "click4cash-7e106",
-            storageBucket: "click4cash-7e106.appspot.com",
-            messagingSenderId: "689145020485",
-            appId: "1:689145020485:web:458d083ec5bca7d8b3e32c"
-        };
-        console.log("Initializing Firebase with config:", firebaseConfig);
-        firebase.initializeApp(firebaseConfig);
-        const appCheck = firebase.appCheck();
-        console.log("Activating App Check with site key: 6LdQq-4qAAAAABzNzVlhJzLlxbK3zh6M5NiHY7cf");
-        appCheck.activate('6LdQq-4qAAAAABzNzVlhJzLlxbK3zh6M5NiHY7cf', true);
-
-        // Debug App Check token
-        appCheck.getToken()
-            .then(token => console.log("Initial App Check Token:", token.token))
-            .catch(err => console.error("App Check Token Error:", err.message));
-        appCheck.onTokenChanged(
-            (token) => console.log("App Check Token Updated:", token.token),
-            (err) => console.error("App Check Token Failed:", err.message)
-        );
-
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-        const storage = firebase.storage();
-    
-        let currentUser = null;
-        let totalClicks = 0;
-        let localClicks = 0;
-        let clickBuffer = 0;
-        let syncTimeout = null;
-        let baseStarSpeed = 20;
-        let clickSpeedBoost = false;
-        let leaderboardListener = null;
-        let profileListener = null;
-        let clickTimestamps = [];
-        let fakeCPSCount = 0;
-        let highestCPS = 0;
-        const defaultProfilePic = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24"><path d="M2 2l14 14-4 4-6-6-4-4z" fill="%23000"/><path d="M2 2l14 14-4 4-6-6-4-4z" stroke="%23fff" stroke-width="2" fill="none"/></svg>';
-    
-        if (!localStorage.getItem('visited')) {
-            showRulesPopup();
-            localStorage.setItem('visited', 'true');
-        }
-    
-        function initSpaceBackground() {
-            const spaceBackground = document.getElementById('space-background');
-            const starCount = 30;
-            for (let i = 0; i < starCount; i++) {
-                const star = document.createElement('div');
-                star.classList.add('star');
-                star.style.width = `${Math.random() * 3 + 1}px`;
-                star.style.height = star.style.width;
-                star.style.left = `${Math.random() * 100}%`;
-                star.style.top = `${Math.random() * -100}vh`;
-                star.style.animationDuration = `${baseStarSpeed + Math.random() * 10}s`;
-                spaceBackground.appendChild(star);
-            }
-        }
-    
-        function updateStarSpeed(faster = false) {
-            const stars = document.querySelectorAll('.star');
-            const newSpeed = faster ? baseStarSpeed / 4 : baseStarSpeed;
-            stars.forEach(star => {
-                star.style.animationDuration = `${newSpeed + Math.random() * 5}s`;
-            });
-        }
-    
-        function createParticles(x, y) {
-            for (let i = 0; i < 10; i++) {
-                const particle = document.createElement('div');
-                particle.classList.add('particle');
-                const size = Math.random() * 3 + 1;
-                particle.style.width = `${size}px`;
-                particle.style.height = `${size}px`;
-                particle.style.background = `hsl(${Math.random() * 60 + 30}, 100%, 50%)`;
-                particle.style.left = `${x}px`;
-                particle.style.top = `${y}px`;
-                const angle = Math.random() * 2 * Math.PI;
-                const velocity = Math.random() * 100 + 50;
-                const dx = Math.cos(angle) * velocity;
-                const dy = Math.sin(angle) * velocity;
-                particle.style.setProperty('--dx', `${dx}px`);
-                particle.style.setProperty('--dy', `${dy}px`);
-                document.body.appendChild(particle);
-                setTimeout(() => particle.remove(), 500);
-            }
-        }
-    
-        function startProfileListener() {
-            if (currentUser) {
-                console.log("Starting profile listener for user:", currentUser.uid);
-                profileListener = db.collection("users").doc(currentUser.uid).onSnapshot((doc) => {
-                    if (doc.exists) {
-                        const data = doc.data();
-                        console.log("Profile snapshot received:", data);
-                        localClicks = data.clicks || 0;
-                        document.getElementById('click-count').innerText = `Clicks: ${localClicks}`;
-                        document.getElementById('join-date').innerText = `Joined: ${new Date(data.joinDate).toLocaleDateString()}`;
-                        document.getElementById('bio').innerText = data.bio || "No bio yet";
-                        document.getElementById('country').innerText = data.country || "Not specified";
-                        document.getElementById('highest-cps').innerText = `Highest CPS: ${data.highestCPS || 0}`;
-                        if (data.profilePictureUrl) {
-                            document.getElementById('profile-picture').src = data.profilePictureUrl;
-                            document.getElementById('profile-picture').style.display = 'block';
-                        } else {
-                            document.getElementById('profile-picture').src = defaultProfilePic;
-                            document.getElementById('profile-picture').style.display = 'block';
-                        }
-                        document.getElementById('user-email').innerText = data.emailPublic ? data.email : data.username;
-                    } else {
-                        console.log("No profile data found for user:", currentUser.uid);
-                    }
-                }, (err) => console.error("Profile listener error:", err.message));
-            }
-        }
-    
-        function startLeaderboardListener() {
-            if (currentUser) {
-                console.log("Starting leaderboard listener for user:", currentUser.uid);
-                if (leaderboardListener) leaderboardListener();
-                document.getElementById('leaderboard-loading').style.display = 'block';
-                leaderboardListener = db.collection("users").orderBy("clicks", "desc").limit(5).onSnapshot((snapshot) => {
-                    console.log("Leaderboard snapshot received, docs count:", snapshot.docs.length);
-                    document.getElementById('leaderboard-loading').style.display = 'none';
-                    const leaderboard = document.getElementById('leaderboard');
-                    leaderboard.innerHTML = '';
-                    totalClicks = 0;
-                    snapshot.forEach(doc => {
-                        const userData = doc.data();
-                        if (userData.clicks !== undefined) {
-                            const item = document.createElement('div');
-                            item.className = 'leaderboard-item';
-                            item.dataset.userId = doc.id;
-                            if (doc.id === currentUser?.uid) {
-                                item.id = 'user-leaderboard-item';
-                            }
-                            item.onclick = () => showUserProfile(doc.id);
-                            const img = document.createElement('img');
-                            img.src = userData.profilePictureUrl || defaultProfilePic;
-                            img.alt = 'Profile';
-                            const span = document.createElement('span');
-                            span.textContent = `${userData.username} - ${userData.clicks} clicks`;
-                            const incrementSpan = document.createElement('span');
-                            incrementSpan.className = 'click-increment';
-                            incrementSpan.textContent = '+1';
-                            item.appendChild(img);
-                            item.appendChild(span);
-                            item.appendChild(incrementSpan);
-                            leaderboard.appendChild(item);
-                            totalClicks += userData.clicks;
-                        }
-                    });
-                    updateChanceOfWinning();
-                }, (err) => {
-                    console.error("Leaderboard listener error:", err.message);
-                    document.getElementById('leaderboard-loading').style.display = 'none';
-                });
-            } else {
-                console.log("No current user, skipping leaderboard listener");
-            }
-        }
-    
-        function showLeaderboardPopup() {
-            if (!currentUser) {
-                showErrorPopup("Please log in to view the leaderboard!");
-                console.log("Leaderboard popup blocked: user not logged in");
-                return;
-            }
-            console.log("Fetching full leaderboard for user:", currentUser.uid);
-            const fullLeaderboard = document.getElementById('full-leaderboard');
-            fullLeaderboard.innerHTML = '<div>Loading...</div>';
-            db.collection("users").orderBy("clicks", "desc").get()
-                .then((snapshot) => {
-                    console.log("Full leaderboard snapshot received, docs count:", snapshot.docs.length);
-                    fullLeaderboard.innerHTML = '';
-                    snapshot.forEach(doc => {
-                        const userData = doc.data();
-                        if (userData.clicks !== undefined) {
-                            const item = document.createElement('div');
-                            item.className = 'leaderboard-item';
-                            item.dataset.userId = doc.id;
-                            item.onclick = () => showUserProfile(doc.id);
-                            const img = document.createElement('img');
-                            img.src = userData.profilePictureUrl || defaultProfilePic;
-                            img.alt = 'Profile';
-                            const span = document.createElement('span');
-                            span.textContent = `${userData.username} - ${userData.clicks} clicks`;
-                            item.appendChild(img);
-                            item.appendChild(span);
-                            fullLeaderboard.appendChild(item);
-                        }
-                    });
-                    document.getElementById('leaderboard-popup').style.display = 'block';
-                    document.getElementById('overlay').style.display = 'block';
-                })
-                .catch(err => {
-                    console.error("Error fetching full leaderboard:", err.message);
-                    fullLeaderboard.innerHTML = 'Error loading leaderboard.';
-                });
-        }
-    
-        function hideLeaderboardPopup() {
-            document.getElementById('leaderboard-popup').style.display = 'none';
-            document.getElementById('overlay').style.display = 'none';
-        }
-    
-        function updateChanceOfWinning() {
-            if (currentUser) {
-                const userRef = db.collection("users").doc(currentUser.uid);
-                userRef.get().then((doc) => {
-                    if (doc.exists) {
-                        const userClicks = doc.data().clicks || 0;
-                        const chance = totalClicks > 0 ? ((userClicks / totalClicks) * 100).toFixed(2) : 0;
-                        document.getElementById('chance-of-winning').innerText = `Chance of Winning: ${chance}%`;
-                        console.log("Chance of winning updated:", chance);
-                    }
-                }).catch(err => console.error("Error updating chance:", err.message));
-            }
-        }
-    
-        function showRulesPopup() {
-            document.getElementById('rules-popup').style.display = 'block';
-            document.getElementById('overlay').style.display = 'block';
-        }
-    
-        function closeRulesPopup() {
-            document.getElementById('rules-popup').style.display = 'none';
-            document.getElementById('overlay').style.display = 'none';
-        }
-    
-        function showLogin() {
-            document.getElementById('login-popup').style.display = 'block';
-            document.getElementById('overlay').style.display = 'block';
-        }
-    
-        function hideLogin() {
-            document.getElementById('login-popup').style.display = 'none';
-            document.getElementById('overlay').style.display = 'none';
-        }
-    
-        function showSignUp() {
-            document.getElementById('signup-popup').style.display = 'block';
-            document.getElementById('overlay').style.display = 'block';
-        }
-    
-        function hideSignUp() {
-            document.getElementById('signup-popup').style.display = 'none';
-            document.getElementById('overlay').style.display = 'none';
-        }
-    
-        function showWelcomePopup(username) {
-            document.getElementById('welcome-message').innerText = `Welcome, ${username}! You could win 100% of the weekly ad revenue!`;
-            document.getElementById('welcome-popup').style.display = 'block';
-            document.getElementById('overlay').style.display = 'block';
-        }
-    
-        function closeWelcomePopup() {
-            document.getElementById('welcome-popup').style.display = 'none';
-            document.getElementById('overlay').style.display = 'none';
-        }
-    
-        function showErrorPopup(message) {
-            document.getElementById('error-message').innerText = message;
-            document.getElementById('error-popup').style.display = 'block';
-            document.getElementById('overlay').style.display = 'block';
-        }
-    
-        function hideErrorPopup() {
-            document.getElementById('error-popup').style.display = 'none';
-            document.getElementById('overlay').style.display = 'none';
-        }
-    
-        function showUserProfile(userId) {
-            if (!currentUser) {
-                showErrorPopup("Please log in to view profiles!");
-                return;
-            }
-            const userRef = db.collection("users").doc(userId);
-            userRef.get().then((doc) => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    document.getElementById('popup-profile-picture').src = data.profilePictureUrl || defaultProfilePic;
-                    document.getElementById('popup-user-email').innerText = `Username: ${data.username}${data.emailPublic ? `\nEmail: ${data.email}` : ''}`;
-                    document.getElementById('popup-bio').innerText = data.bio || "No bio yet";
-                    document.getElementById('popup-country').innerText = data.country || "Not specified";
-                    document.getElementById('popup-join-date').innerText = `Joined: ${new Date(data.joinDate).toLocaleDateString()}`;
-                    document.getElementById('popup-clicks').innerText = `Clicks: ${data.clicks || 0}`;
-                    document.getElementById('popup-highest-cps').innerText = `Highest CPS: ${data.highestCPS || 0}`;
-                    document.getElementById('user-profile-popup').style.display = 'block';
-                    document.getElementById('overlay').style.display = 'block';
-                }
-            }).catch((error) => console.error("Error fetching user profile:", error.message));
-        }
-    
-        function hideUserProfilePopup() {
-            document.getElementById('user-profile-popup').style.display = 'none';
-            document.getElementById('overlay').style.display = 'none';
-        }
-    
-        function showEditProfilePopup() {
-            if (!currentUser) {
-                showErrorPopup("Please log in to edit your profile!");
-                return;
-            }
-            const userRef = db.collection("users").doc(currentUser.uid);
-            userRef.get().then((doc) => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    document.getElementById('bio-input').value = data.bio || "";
-                    document.getElementById('country-input').value = data.country || "";
-                    document.getElementById('profile-picture-input').value = "";
-                    document.getElementById('edit-profile-popup').style.display = 'block';
-                    document.getElementById('overlay').style.display = 'block';
-                }
-            }).catch((error) => console.error("Error loading profile data:", error.message));
-        }
-    
-        function hideEditProfilePopup() {
-            document.getElementById('edit-profile-popup').style.display = 'none';
-            document.getElementById('overlay').style.display = 'none';
-        }
-    
-        function login(event) {
-            event.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            console.log("Attempting login with email:", email);
-            auth.signInWithEmailAndPassword(email, password)
-                .then((userCredential) => {
-                    console.log("Login successful, user:", userCredential.user.uid);
-                    hideLogin();
-                    showWelcomePopup(userCredential.user.email.split('@')[0]);
-                })
-                .catch((error) => {
-                    let friendlyMessage = "Login failed. Please try again.";
-                    if (error.code === 'auth/user-not-found') {
-                        friendlyMessage = "No account found with this email. Please sign up!";
-                    } else if (error.code === 'auth/wrong-password' || error.message.includes("INVALID_LOGIN_CREDENTIALS")) {
-                        friendlyMessage = "Incorrect password. Please check and try again.";
-                    }
-                    console.error("Login error:", error.message);
-                    showErrorPopup(friendlyMessage);
-                });
-        }
-    
-        function signUp(event) {
-            event.preventDefault();
-            const username = document.getElementById('signup-username').value.trim();
-            const email = document.getElementById('signup-email').value;
-            const password = document.getElementById('signup-password').value;
-            const emailPublic = document.getElementById('privacy-toggle').checked;
-    
-            if (username.length === 0) {
-                showErrorPopup("Please enter a username!");
-                return;
-            }
-    
-            console.log("Attempting signup with email:", email, "username:", username);
-            auth.createUserWithEmailAndPassword(email, password)
-                .then((userCredential) => {
-                    currentUser = userCredential.user;
-                    console.log("Signup successful, user:", currentUser.uid);
-                    const userRef = db.collection("users").doc(currentUser.uid);
-                    userRef.set({
-                        username: username,
-                        email: currentUser.email,
-                        emailPublic: emailPublic,
-                        clicks: 0,
-                        joinDate: new Date().toISOString(),
-                        playtime: 0,
-                        bio: "",
-                        profilePictureUrl: "",
-                        country: "",
-                        highestCPS: 0
-                    }).then(() => {
-                        console.log("User data set in Firestore");
-                        hideSignUp();
-                        showWelcomePopup(username);
-                    }).catch(err => console.error("Error setting user data:", err.message));
-                })
-                .catch((error) => {
-                    let friendlyMessage = "Sign-up failed. Please try again.";
-                    if (error.code === 'auth/email-already-in-use') {
-                        friendlyMessage = "This email is already in use. Try logging in!";
-                    } else if (error.code === 'auth/weak-password') {
-                        friendlyMessage = "Password too weak. Use at least 6 characters.";
-                    }
-                    console.error("Signup error:", error.message);
-                    showErrorPopup(friendlyMessage);
-                });
-        }
-    
-        function logout() {
-            if (leaderboardListener) leaderboardListener();
-            if (profileListener) profileListener();
-            console.log("Logging out user:", currentUser?.uid);
-            auth.signOut().then(() => {
-                console.log("Logout successful");
-                currentUser = null;
-                localClicks = 0;
-                clickBuffer = 0;
-                document.getElementById('click-count').innerText = 'Clicks: 0';
-                document.getElementById('user-email').innerText = 'Not Logged In';
-                document.getElementById('bio').innerText = 'No bio yet';
-                document.getElementById('country').innerText = 'Not specified';
-                document.getElementById('join-date').innerText = '';
-                document.getElementById('profile-picture').style.display = 'none';
-                document.getElementById('chance-of-winning').innerText = 'Chance of Winning: 0%';
-                document.getElementById('highest-cps').innerText = 'Highest CPS: 0';
-                document.getElementById('login-btn').style.display = 'inline-block';
-                document.getElementById('signup-btn').style.display = 'inline-block';
-                document.getElementById('logout-btn').style.display = 'none';
-                document.getElementById('edit-profile-btn').style.display = 'none';
-                document.getElementById('delete-account-btn').style.display = 'none';
-                document.getElementById('click-message').style.display = 'block';
-                document.getElementById('click-btn').disabled = true;
-                document.getElementById('leaderboard').innerHTML = '';
-            }).catch((error) => console.error("Logout failed:", error.message));
-        }
-    
-        function loadUserData() {
-            if (currentUser) {
-                console.log("Loading user data for:", currentUser.uid);
-                auth.currentUser.getIdToken().then(token => console.log("Auth Token:", token))
-                    .catch(err => console.error("Auth Token Error:", err.message));
-                const userRef = db.collection("users").doc(currentUser.uid);
-                userRef.get().then((doc) => {
-                    if (doc.exists) {
-                        const data = doc.data();
-                        console.log("User data loaded:", data);
-                        localClicks = data.clicks || 0;
-                        document.getElementById('click-count').innerText = `Clicks: ${localClicks}`;
-                        document.getElementById('join-date').innerText = `Joined: ${new Date(data.joinDate).toLocaleDateString()}`;
-                        document.getElementById('bio').innerText = data.bio || "No bio yet";
-                        document.getElementById('country').innerText = data.country || "Not specified";
-                        document.getElementById('highest-cps').innerText = `Highest CPS: ${data.highestCPS || 0}`;
-                        if (data.profilePictureUrl) {
-                            document.getElementById('profile-picture').src = data.profilePictureUrl;
-                            document.getElementById('profile-picture').style.display = 'block';
-                        } else {
-                            document.getElementById('profile-picture').src = defaultProfilePic;
-                            document.getElementById('profile-picture').style.display = 'block';
-                        }
-                        document.getElementById('edit-profile-btn').style.display = 'block';
-                        document.getElementById('delete-account-btn').style.display = 'block';
-                        document.getElementById('user-email').innerText = data.emailPublic ? data.email : data.username;
-                        document.getElementById('click-message').style.display = 'none';
-                    } else {
-                        console.log("No user data found for:", currentUser.uid);
-                    }
-                }).catch((error) => console.error("Error loading user data:", error.message));
-            } else {
-                console.log("No current user, skipping loadUserData");
-            }
-        }
-    
-        function saveProfile(event) {
-            event.preventDefault();
-            if (!currentUser) {
-                showErrorPopup("Please log in to save your profile!");
-                return;
-            }
-            const bio = document.getElementById('bio-input').value;
-            const country = document.getElementById('country-input').value;
-            const file = document.getElementById('profile-picture-input').files[0];
-            const userRef = db.collection("users").doc(currentUser.uid);
-    
-            if (file) {
-                if (file.size > 32 * 1024 * 1024) {
-                    showErrorPopup("Image must be under 32 MB!");
-                    return;
-                }
-                const formData = new FormData();
-                formData.append("image", file);
-                fetch("https://api.imgbb.com/1/upload?key=6055d35ebda650b6bc19fbdffc564e0d", {
-                    method: "POST",
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const url = data.data.url;
-                        return userRef.update({ bio, country, profilePictureUrl: url })
-                            .then(() => {
-                                console.log("Profile updated with image URL:", url);
-                                loadUserData();
-                                hideEditProfilePopup();
-                            });
-                    } else {
-                        showErrorPopup("Image upload failed: " + (data.error?.message || "Unknown error"));
-                    }
-                })
-                .catch(err => {
-                    console.error("ImgBB/Firestore error:", err.message);
-                    showErrorPopup("Profile update failed!");
-                });
-            } else {
-                userRef.update({ bio, country })
-                    .then(() => {
-                        console.log("Profile updated without image");
-                        loadUserData();
-                        hideEditProfilePopup();
-                    })
-                    .catch(err => console.error("Firestore update error:", err.message));
-            }
-        }
-    
-        function calculateCPS() {
-            const now = Date.now();
-            clickTimestamps = clickTimestamps.filter(ts => now - ts < 1000);
-            const cps = clickTimestamps.length;
-            if (cps > 40) {
-                showErrorPopup("Autoclicker detected! Please stop using autoclickers.");
-                fakeCPSCount += cps;
-                if (fakeCPSCount > 300) {
-                    deleteAccount(true);
-                }
-            }
-            if (cps > highestCPS) {
-                highestCPS = cps;
-                if (currentUser) {
-                    db.collection("users").doc(currentUser.uid).update({ highestCPS: cps });
-                }
-            }
-            return cps;
-        }
-    
-        function incrementClicks(event) {
-            if (!currentUser) {
-                document.getElementById('click-message').style.display = 'block';
-                console.log("Click blocked: no current user");
-                return;
-            }
-            console.log("Incrementing clicks for user:", currentUser.uid);
-            localClicks += 1;
-            clickBuffer += 1;
-            clickTimestamps.push(Date.now());
-            calculateCPS();
-            document.getElementById('click-count').innerText = `Clicks: ${localClicks}`;
-    
-            const rect = document.getElementById('click-btn').getBoundingClientRect();
-            const x = event.clientX;
-            const y = event.clientY;
-            createParticles(x, y);
-    
-            if (!clickSpeedBoost) {
-                clickSpeedBoost = true;
-                updateStarSpeed(true);
-                setTimeout(() => {
-                    clickSpeedBoost = false;
-                    updateStarSpeed(false);
-                }, 500);
-            }
-    
-            if (syncTimeout) clearTimeout(syncTimeout);
-            syncTimeout = setTimeout(syncClicks, 500);
-    
-            if (currentUser) {
-                const userItem = document.querySelector(`.leaderboard-item[data-user-id="${currentUser.uid}"]`);
-                if (userItem) {
-                    const incrementSpan = userItem.querySelector('.click-increment');
-                    incrementSpan.classList.add('show');
-                    setTimeout(() => incrementSpan.classList.remove('show'), 500);
-                }
-            }
-        }
-    
-        function syncClicks() {
-            if (clickBuffer > 0 && currentUser) {
-                console.log("Syncing clicks for user:", currentUser.uid, "buffer:", clickBuffer);
-                const userRef = db.collection("users").doc(currentUser.uid);
-                userRef.update({
-                    clicks: firebase.firestore.FieldValue.increment(clickBuffer)
-                }).then(() => {
-                    console.log("Clicks synced successfully");
-                    clickBuffer = 0;
-                }).catch(err => console.error("Error syncing clicks:", err.message));
-            } else {
-                console.log("No clicks to sync or no user");
-            }
-        }
-    
-        function deleteAccount(force = false) {
-            if (!currentUser) return;
-            if (!force && !confirm("Are you sure you want to delete your account? This action cannot be undone.")) return;
-            const userRef = db.collection("users").doc(currentUser.uid);
-            userRef.delete().then(() => {
-                auth.currentUser.delete().then(() => {
-                    logout();
-                });
-            }).catch(err => console.error("Error deleting account:", err.message));
-        }
-    
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                console.log("Auth state changed: User logged in:", user.uid);
-                currentUser = user;
-                loadUserData();
-                startProfileListener();
-                startLeaderboardListener();
-                document.getElementById('login-btn').style.display = 'none';
-                document.getElementById('signup-btn').style.display = 'none';
-                document.getElementById('logout-btn').style.display = 'inline-block';
-                document.getElementById('click-btn').disabled = false;
-                document.getElementById('click-message').style.display = 'none';
-                document.getElementById('edit-profile-btn').style.display = 'block';
-                document.getElementById('delete-account-btn').style.display = 'block';
-            } else {
-                console.log("Auth state changed: User logged out");
-                if (leaderboardListener) leaderboardListener();
-                if (profileListener) profileListener();
-                currentUser = null;
-                localClicks = 0;
-                clickBuffer = 0;
-                document.getElementById('click-count').innerText = 'Clicks: 0';
-                document.getElementById('user-email').innerText = 'Not Logged In';
-                document.getElementById('bio').innerText = 'No bio yet';
-                document.getElementById('country').innerText = 'Not specified';
-                document.getElementById('join-date').innerText = '';
-                document.getElementById('profile-picture').style.display = 'none';
-                document.getElementById('chance-of-winning').innerText = 'Chance of Winning: 0%';
-                document.getElementById('highest-cps').innerText = 'Highest CPS: 0';
-                document.getElementById('login-btn').style.display = 'inline-block';
-                document.getElementById('signup-btn').style.display = 'inline-block';
-                document.getElementById('logout-btn').style.display = 'none';
-                document.getElementById('edit-profile-btn').style.display = 'none';
-                document.getElementById('delete-account-btn').style.display = 'none';
-                document.getElementById('click-btn').disabled = true;
-                document.getElementById('click-message').style.display = 'block';
-                document.getElementById('leaderboard').innerHTML = '';
-            }
-        });
-    
-        initSpaceBackground();
-    </script>
 </body>
 </html>
