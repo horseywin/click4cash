@@ -20,7 +20,7 @@
         import { getFirestore, doc, getDoc, onSnapshot, collection, query, orderBy, limit, getDocs, updateDoc, increment, setDoc } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
         import { getStorage } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-storage.js";
         import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app-check.js";
-
+    
         // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCQeZ1EOPbHOy8_wOBBvlchZwj8tTCZM2w",
@@ -30,20 +30,27 @@
             messagingSenderId: "689145020485",
             appId: "1:689145020485:web:458d083ec5bca7d8b3e32c"
         };
-
+    
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
         const storage = getStorage(app);
-
+    
         // Initialize App Check with reCAPTCHA v3
         const appCheck = initializeAppCheck(app, {
             provider: new ReCaptchaV3Provider('6LdQq-4qAAAAABzNzVlhJzLlxbK3zh6M5NiHY7cf'),
             isTokenAutoRefreshEnabled: true
         });
         console.log("Firebase initialized with App Check");
-
+    
+        // Debug App Check Token
+        appCheck.getToken().then((tokenResponse) => {
+            console.log("App Check Token:", tokenResponse.token);
+        }).catch((error) => {
+            console.error("App Check Token Error:", error.message);
+        });
+    
         let currentUser = null;
         let totalClicks = 0;
         let localClicks = 0;
@@ -57,12 +64,12 @@
         let fakeCPSCount = 0;
         let highestCPS = 0;
         const defaultProfilePic = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24"><path d="M2 2l14 14-4 4-6-6-4-4z" fill="%23000"/><path d="M2 2l14 14-4 4-6-6-4-4z" stroke="%23fff" stroke-width="2" fill="none"/></svg>';
-
+    
         if (!localStorage.getItem('visited')) {
             showRulesPopup();
             localStorage.setItem('visited', 'true');
         }
-
+    
         function initSpaceBackground() {
             const spaceBackground = document.getElementById('space-background');
             const starCount = 30;
@@ -77,7 +84,7 @@
                 spaceBackground.appendChild(star);
             }
         }
-
+    
         function updateStarSpeed(faster = false) {
             const stars = document.querySelectorAll('.star');
             const newSpeed = faster ? baseStarSpeed / 4 : baseStarSpeed;
@@ -85,7 +92,7 @@
                 star.style.animationDuration = `${newSpeed + Math.random() * 5}s`;
             });
         }
-
+    
         function createParticles(x, y) {
             for (let i = 0; i < 10; i++) {
                 const particle = document.createElement('div');
@@ -106,7 +113,7 @@
                 setTimeout(() => particle.remove(), 500);
             }
         }
-
+    
         function startProfileListener() {
             if (currentUser) {
                 console.log("Starting profile listener for user:", currentUser.uid);
@@ -134,7 +141,7 @@
                 }, (err) => console.error("Profile listener error:", err.message));
             }
         }
-
+    
         function startLeaderboardListener() {
             if (currentUser) {
                 console.log("Starting leaderboard listener for user:", currentUser.uid);
@@ -181,7 +188,7 @@
                 console.log("No current user, skipping leaderboard listener");
             }
         }
-
+    
         function showLeaderboardPopup() {
             if (!currentUser) {
                 showErrorPopup("Please log in to view the leaderboard!");
@@ -219,12 +226,12 @@
                 fullLeaderboard.innerHTML = 'Error loading leaderboard.';
             });
         }
-
+    
         function hideLeaderboardPopup() {
             document.getElementById('leaderboard-popup').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
         }
-
+    
         function updateChanceOfWinning() {
             if (currentUser) {
                 getDoc(doc(db, "users", currentUser.uid)).then((docSnap) => {
@@ -237,59 +244,59 @@
                 }).catch(err => console.error("Error updating chance:", err.message));
             }
         }
-
+    
         function showRulesPopup() {
             document.getElementById('rules-popup').style.display = 'block';
             document.getElementById('overlay').style.display = 'block';
         }
-
+    
         function closeRulesPopup() {
             document.getElementById('rules-popup').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
         }
-
+    
         function showLogin() {
             document.getElementById('login-popup').style.display = 'block';
             document.getElementById('overlay').style.display = 'block';
         }
-
+    
         function hideLogin() {
             document.getElementById('login-popup').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
         }
-
+    
         function showSignUp() {
             document.getElementById('signup-popup').style.display = 'block';
             document.getElementById('overlay').style.display = 'block';
         }
-
+    
         function hideSignUp() {
             document.getElementById('signup-popup').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
         }
-
+    
         function showWelcomePopup(username) {
             document.getElementById('welcome-message').innerText = `Welcome, ${username}! You could win 100% of the weekly ad revenue!`;
             document.getElementById('welcome-popup').style.display = 'block';
             document.getElementById('overlay').style.display = 'block';
         }
-
+    
         function closeWelcomePopup() {
             document.getElementById('welcome-popup').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
         }
-
+    
         function showErrorPopup(message) {
             document.getElementById('error-message').innerText = message;
             document.getElementById('error-popup').style.display = 'block';
             document.getElementById('overlay').style.display = 'block';
         }
-
+    
         function hideErrorPopup() {
             document.getElementById('error-popup').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
         }
-
+    
         function showUserProfile(userId) {
             if (!currentUser) {
                 showErrorPopup("Please log in to view profiles!");
@@ -310,12 +317,12 @@
                 }
             }).catch((error) => console.error("Error fetching user profile:", error.message));
         }
-
+    
         function hideUserProfilePopup() {
             document.getElementById('user-profile-popup').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
         }
-
+    
         function showEditProfilePopup() {
             if (!currentUser) {
                 showErrorPopup("Please log in to edit your profile!");
@@ -332,12 +339,12 @@
                 }
             }).catch((error) => console.error("Error loading profile data:", error.message));
         }
-
+    
         function hideEditProfilePopup() {
             document.getElementById('edit-profile-popup').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
         }
-
+    
         function login(event) {
             event.preventDefault();
             const email = document.getElementById('email').value;
@@ -360,19 +367,19 @@
                     showErrorPopup(friendlyMessage);
                 });
         }
-
+    
         function signUp(event) {
             event.preventDefault();
             const username = document.getElementById('signup-username').value.trim();
             const email = document.getElementById('signup-email').value;
             const password = document.getElementById('signup-password').value;
             const emailPublic = document.getElementById('privacy-toggle').checked;
-
+    
             if (username.length === 0) {
                 showErrorPopup("Please enter a username!");
                 return;
             }
-
+    
             console.log("Attempting signup with email:", email, "username:", username);
             createUserWithEmailAndPassword(auth, email, password)
                 .then((userCredential) => {
@@ -407,7 +414,7 @@
                     showErrorPopup(friendlyMessage);
                 });
         }
-
+    
         function logout() {
             if (leaderboardListener) leaderboardListener();
             if (profileListener) profileListener();
@@ -435,7 +442,7 @@
                 document.getElementById('leaderboard').innerHTML = '';
             }).catch((error) => console.error("Logout failed:", error.message));
         }
-
+    
         function loadUserData() {
             if (currentUser) {
                 console.log("Loading user data for:", currentUser.uid);
@@ -468,7 +475,7 @@
                 console.log("No current user, skipping loadUserData");
             }
         }
-
+    
         function saveProfile(event) {
             event.preventDefault();
             if (!currentUser) {
@@ -479,7 +486,7 @@
             const country = document.getElementById('country-input').value;
             const file = document.getElementById('profile-picture-input').files[0];
             const userRef = doc(db, "users", currentUser.uid);
-
+    
             if (file) {
                 if (file.size > 32 * 1024 * 1024) {
                     showErrorPopup("Image must be under 32 MB!");
@@ -519,7 +526,7 @@
                     .catch(err => console.error("Firestore update error:", err.message));
             }
         }
-
+    
         function calculateCPS() {
             const now = Date.now();
             clickTimestamps = clickTimestamps.filter(ts => now - ts < 1000);
@@ -539,7 +546,7 @@
             }
             return cps;
         }
-
+    
         function incrementClicks(event) {
             if (!currentUser) {
                 document.getElementById('click-message').style.display = 'block';
@@ -552,12 +559,12 @@
             clickTimestamps.push(Date.now());
             calculateCPS();
             document.getElementById('click-count').innerText = `Clicks: ${localClicks}`;
-
+    
             const rect = document.getElementById('click-btn').getBoundingClientRect();
             const x = event.clientX;
             const y = event.clientY;
             createParticles(x, y);
-
+    
             if (!clickSpeedBoost) {
                 clickSpeedBoost = true;
                 updateStarSpeed(true);
@@ -566,10 +573,10 @@
                     updateStarSpeed(false);
                 }, 500);
             }
-
+    
             if (syncTimeout) clearTimeout(syncTimeout);
             syncTimeout = setTimeout(syncClicks, 500);
-
+    
             if (currentUser) {
                 const userItem = document.querySelector(`.leaderboard-item[data-user-id="${currentUser.uid}"]`);
                 if (userItem) {
@@ -579,7 +586,7 @@
                 }
             }
         }
-
+    
         function syncClicks() {
             if (clickBuffer > 0 && currentUser) {
                 console.log("Syncing clicks for user:", currentUser.uid, "buffer:", clickBuffer);
@@ -593,7 +600,7 @@
                 console.log("No clicks to sync or no user");
             }
         }
-
+    
         function deleteAccount(force = false) {
             if (!currentUser) return;
             if (!force && !confirm("Are you sure you want to delete your account? This action cannot be undone.")) return;
@@ -604,7 +611,7 @@
                 });
             }).catch(err => console.error("Error deleting account:", err.message));
         }
-
+    
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 console.log("Auth state changed: User logged in:", user.uid);
@@ -644,7 +651,7 @@
                 document.getElementById('leaderboard').innerHTML = '';
             }
         });
-
+    
         initSpaceBackground();
     </script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
